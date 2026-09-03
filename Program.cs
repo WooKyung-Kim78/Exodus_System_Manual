@@ -1,0 +1,87 @@
+using ExodusSystemManual.Bootstrap;
+using ExodusSystemManual.Data;
+using ExodusSystemManual.Utils;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.EntityFrameworkCore;
+
+if (args.Length > 0 && args[0].Equals("seed-admin", StringComparison.OrdinalIgnoreCase))
+{
+    return await SeedAdminCommand.RunAsync(args);
+}
+
+var builder = WebApplication.CreateBuilder(args);
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "ConnectionStrings:DefaultConnection 이 비어 있습니다. " +
+        "dotnet user-secrets set \"ConnectionStrings:DefaultConnection\" \"<연결문자열>\" 로 설정하세요.");
+}
+
+builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseSqlServer(connectionString));
+
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(o => o.JsonSerializerOptions.PropertyNamingPolicy = null)
+    .AddRazorRuntimeCompilation();
+
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<LoginThrottle>();
+builder.Services.AddSingleton<HtmlSanitize>();
+builder.Services.AddScoped<SendMail>();
+
+// ajaxSetting.js 가 이 헤더로 토큰을 실어 보낸다.
+builder.Services.AddAntiforgery(o => o.HeaderName = "RequestVerificationToken");
+
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(4);
+    options.Cookie.Name = "ExodusSystemManual.SESSION";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    // Always 로 고정하면 개발중 http 접속 시 쾠키가 저장되지 않아 로그인이 유지되지 않는다.
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+});
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys")))
+    .SetApplicationName("ExodusSystemManual");
+
+builder.Services.Configure<FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = builder.Configuration.GetValue<long>("APP:MAX_UPLOAD_BYTES", 20 * 1024 * 1024);
+});
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+// 404/403 이 빈 화면으로 보이지 않도록 안내 페이지로 다시 실행한다.
+app.UseStatusCodePagesWithReExecute("/auth/error{0}");
+
+app.UseRouting();
+
+app.UseSession();
+
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.Run();
+return 0;

@@ -1,0 +1,17 @@
+/* body 배경만 지정하면 html 캔버스가 transparent 로 남아, 투명 영역을 빗금으로 표시하는
+   캡처 도구나 임베디드 뷰어에서 배경이 비쳐 보인다. 캔버스를 명시적으로 칠한다. */
+html {
+    background-color: #f5f8fa;
+}
+
+[v-cloak] {
+    display: none !important;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.section-row:hover {
+    background-color: var(--bs-gray-100);
+}

@@ -1,0 +1,371 @@
+using ExodusSystemManual.Controllers.Attributes;
+using ExodusSystemManual.Controllers.Common;
+using ExodusSystemManual.Data;
+using ExodusSystemManual.Models;
+using ExodusSystemManual.Utils;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace ExodusSystemManual.Controllers;
+
+[Route("manual")]
+public class ManualController : BaseController<ManualController>
+{
+    private readonly SendMail _mail;
+    private readonly HtmlSanitize _sanitizer;
+
+    public ManualController(
+        ApplicationDbContext db,
+        IWebHostEnvironment env,
+        ILogger<ManualController> logger,
+        IConfiguration config,
+        SendMail mail,
+        HtmlSanitize sanitizer)
+        : base(db, env, logger, config)
+    {
+        _mail = mail;
+        _sanitizer = sanitizer;
+    }
+
+    /* ================= 페이지 ================= */
+
+    [Auth]
+    [HttpGet("")]
+    public IActionResult Index() => View();
+
+    [Auth]
+    [HttpGet("detail")]
+    public IActionResult Detail(string mid)
+    {
+        if (string.IsNullOrEmpty(mid)) return Redirect("/manual");
+
+        var access = GetManualAccess(mid);
+        if (access is null) return NotFound();
+        if (access.CAN_READ != "Y") return Redirect("/auth/error403");
+
+        ViewData["MID"] = mid;
+        return View();
+    }
+
+    [Auth]
+    [HttpGet("preview")]
+    public IActionResult Preview(string mid)
+    {
+        if (string.IsNullOrEmpty(mid)) return Redirect("/manual");
+
+        var access = GetManualAccess(mid);
+        if (access is null) return NotFound();
+        if (access.CAN_READ != "Y") return Redirect("/auth/error403");
+
+        var header = LoadHeader(mid);
+        if (header is null) return NotFound();
+
+        var sections = _db.USP_S_SELECT_SECTION_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_SECTION_LIST {0}, {1}", mid, CurrentUserId!)
+            .AsEnumerable().ToList();
+
+        var blocks = _db.USP_S_SELECT_ELEMENT_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_ELEMENT_LIST {0}, {1}", mid, DBNull.Value)
+            .AsEnumerable().ToList();
+
+        // 저장 시에도 정제하지만, 렌더 직전에 한 번 더 통과시켜 이중 방어한다.
+        foreach (var b in blocks)
+            b.CONTENT_HTML = _sanitizer.Clean(b.CONTENT_HTML);
+
+        var cover = _db.USP_S_SELECT_COMMON_CODE_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_COMMON_CODE_LIST {0}", "COVER")
+            .AsEnumerable()
+            .ToDictionary(c => c.CODE, c => c.NAME);
+
+        return View(new PreviewViewModel
+        {
+            Header = header,
+            Sections = sections,
+            Blocks = blocks.GroupBy(b => b.SEC_ID)
+                           .ToDictionary(g => g.Key, g => g.OrderBy(b => b.ORDER_NUM).ToList()),
+            HeadingStyles = PreviewViewModel.ParseStyles(header.HEADING_STYLE_JSON),
+            CoverTitle1 = cover.GetValueOrDefault("TITLE_LINE1", string.Empty),
+            CoverTitle2 = cover.GetValueOrDefault("TITLE_LINE2", string.Empty),
+            CoverLogoPath = cover.GetValueOrDefault("LOGO_PATH"),
+        });
+    }
+
+    /* ================= 목록 / 헤더 ================= */
+
+    [AjaxAuth]
+    [HttpGet("list")]
+    [Produces("application/json")]
+    public IActionResult GetList(string? status, string? onlyMine, string? startDate, string? endDate)
+    {
+        var list = _db.USP_S_SELECT_MANUAL_LIST_BY_STATUS
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_MANUAL_LIST_BY_STATUS {0}, {1}, {2}, {3}, {4}",
+                string.IsNullOrWhiteSpace(status) ? DBNull.Value : status,
+                CurrentUserId!,
+                onlyMine == "Y" ? "Y" : "N",
+                string.IsNullOrWhiteSpace(startDate) ? DBNull.Value : startDate,
+                string.IsNullOrWhiteSpace(endDate) ? DBNull.Value : endDate)
+            .AsEnumerable()
+            .ToList();
+
+        return JsonOk(new { list });
+    }
+
+    [AjaxAuth]
+    [HttpPost("create")]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
+    public IActionResult CreateNew(InputNewManual input)
+    {
+        if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
+
+        var result = _db.ResultModel
+            .FromSqlRaw("EXECUTE dbo.USP_S_INSERT_MANUAL {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}",
+                (object?)input.JOB_NUMBER ?? DBNull.Value,
+                input.MODEL_NAME,
+                (object?)input.LABEL ?? DBNull.Value,
+                (object?)input.COOLING ?? DBNull.Value,
+                (object?)input.OPTION_TEXT ?? DBNull.Value,
+                input.PAGE_SIZE,
+                DBNull.Value,
+                CurrentUserId!)
+            .AsEnumerable()
+            .FirstOrDefault();
+
+        if (result is null || result.Success == 0)
+            return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "문서를 생성하지 못했습니다.");
+
+        return JsonOk(new { M_ID = result.ReturnMsg });
+    }
+
+    [AjaxAuth]
+    [HttpGet("find")]
+    [Produces("application/json")]
+    public IActionResult FindOne(string mid)
+    {
+        var access = GetManualAccess(mid);
+        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
+        if (access.CAN_READ != "Y") return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+
+        var header = _db.USP_S_SELECT_MANUAL
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_MANUAL {0}", mid)
+            .AsEnumerable()
+            .FirstOrDefault();
+
+        var sections = _db.USP_S_SELECT_SECTION_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_SECTION_LIST {0}, {1}", mid, CurrentUserId!)
+            .AsEnumerable()
+            .ToList();
+
+        return JsonOk(new { header, sections, access });
+    }
+
+    [AjaxAuth]
+    [HttpPost("header")]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
+    public IActionResult UpdateHeader(InputManualHeader input)
+    {
+        if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
+
+        var denied = DenyIfNotEditable(input.M_ID);
+        if (denied is not null) return denied;
+
+        var result = _db.ResultModel
+            .FromSqlRaw("EXECUTE dbo.USP_S_UPDATE_MANUAL_HEADER {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}",
+                input.M_ID,
+                (object?)input.JOB_NUMBER ?? DBNull.Value,
+                input.MODEL_NAME,
+                (object?)input.LABEL ?? DBNull.Value,
+                (object?)input.COOLING ?? DBNull.Value,
+                (object?)input.OPTION_TEXT ?? DBNull.Value,
+                input.PAGE_SIZE,
+                CurrentUserId!)
+            .AsEnumerable()
+            .FirstOrDefault();
+
+        return ToJson(result);
+    }
+
+    [AjaxAuth]
+    [HttpDelete("delete")]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
+    public IActionResult DeleteManual(string mid)
+    {
+        var denied = DenyIfNotEditable(mid);
+        if (denied is not null) return denied;
+
+        var result = _db.ResultModel
+            .FromSqlRaw("EXECUTE dbo.USP_S_DELETE_MANUAL {0}, {1}", mid, CurrentUserId!)
+            .AsEnumerable()
+            .FirstOrDefault();
+
+        return ToJson(result);
+    }
+
+    /* ================= 작성 요청 메일 ================= */
+
+    /// 목차 담당 팀원과 작성자에게 편집기 링크를 담아 요청 메일을 보낸다.
+    [AjaxAuth]
+    [HttpPost("notify")]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
+    public async Task<IActionResult> NotifyEditRequest(string mid, string? memo, string? onlyAssigned)
+    {
+        var denied = DenyIfNotEditable(mid);
+        if (denied is not null) return denied;
+
+        var header = LoadHeader(mid);
+        if (header is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
+
+        var recipients = _db.USP_S_SELECT_NOTIFY_RECIPIENT_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_NOTIFY_RECIPIENT_LIST {0}", mid)
+            .AsEnumerable()
+            .Where(r => !string.IsNullOrWhiteSpace(r.EMAIL_ADDRESS))
+            .Where(r => r.USER_ID != CurrentUserId)
+            .Where(r => onlyAssigned != "Y" || r.SECTION_CNT > 0)
+            .ToList();
+
+        if (recipients.Count == 0)
+            return JsonFail(StatusCodes.Status400BadRequest,
+                "보낼 수신자가 없습니다. 목차의 담당 팀과 사용자 이메일 주소를 확인하세요.");
+
+        var sent = new List<string>();
+        var failed = new List<string>();
+
+        foreach (var recipient in recipients)
+        {
+            var (subject, body) = MailTemplates.EditRequest(header, recipient, AppDomainUrl, CurrentUserName, memo);
+            var (ok, _) = await _mail.SendAsync("EDIT_REQUEST", mid,
+                new[] { recipient.EMAIL_ADDRESS! }, subject, body, regId: CurrentUserId);
+
+            (ok ? sent : failed).Add(recipient.FULL_NAME);
+        }
+
+        var testMode = _mail.LoadSettings().IsTestScope;
+        return JsonOk(new { sent, failed, testMode });
+    }
+
+    [AjaxAuth]
+    [HttpGet("notify/recipients")]
+    [Produces("application/json")]
+    public IActionResult GetNotifyRecipients(string mid)
+    {
+        var access = GetManualAccess(mid);
+        if (access is null || access.CAN_READ != "Y")
+            return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+
+        // 미리보기와 실제 발송 대상이 어긋나지 않도록 본인 제외 기준을 서버에서 맞춘다.
+        var list = _db.USP_S_SELECT_NOTIFY_RECIPIENT_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_NOTIFY_RECIPIENT_LIST {0}", mid)
+            .AsEnumerable()
+            .Where(r => r.USER_ID != CurrentUserId)
+            .ToList();
+
+        return JsonOk(new { list, testMode = _mail.LoadSettings().IsTestScope });
+    }
+
+    /* ================= 표지 이미지 ================= */
+
+    [AjaxAuth]
+    [HttpPost("cover")]
+    [ValidateAntiForgeryToken]
+    [Consumes("multipart/form-data")]
+    [Produces("application/json")]
+    public async Task<IActionResult> UploadCover(string mid, IFormFile file)
+    {
+        var denied = DenyIfNotEditable(mid);
+        if (denied is not null) return denied;
+
+        var maxBytes = _config.GetValue<long>("APP:MAX_UPLOAD_BYTES", 20 * 1024 * 1024);
+        var upload = await ImageUpload.SaveAsync(file, _env.ContentRootPath, mid, maxBytes);
+
+        if (!upload.Success)
+            return JsonFail(StatusCodes.Status400BadRequest, upload.Message ?? "업로드에 실패했습니다.");
+
+        var result = _db.ResultModel
+            .FromSqlRaw("EXECUTE dbo.USP_S_UPDATE_MANUAL_COVER_IMAGE {0}, {1}, {2}",
+                mid, upload.WebPath!, CurrentUserId!)
+            .AsEnumerable().FirstOrDefault();
+
+        if (result is null || result.Success == 0)
+            return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "표지 이미지를 저장하지 못했습니다.");
+
+        return JsonOk(new { path = upload.WebPath });
+    }
+
+    [AjaxAuth]
+    [HttpDelete("cover")]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
+    public IActionResult DeleteCover(string mid)
+    {
+        var denied = DenyIfNotEditable(mid);
+        if (denied is not null) return denied;
+
+        var result = _db.ResultModel
+            .FromSqlRaw("EXECUTE dbo.USP_S_UPDATE_MANUAL_COVER_IMAGE {0}, {1}, {2}",
+                mid, DBNull.Value, CurrentUserId!)
+            .AsEnumerable().FirstOrDefault();
+
+        return ToJson(result);
+    }
+
+    /* ================= 조회용 ================= */
+
+    [AjaxAuth]
+    [HttpGet("teams")]
+    [Produces("application/json")]
+    public IActionResult GetTeams()
+    {
+        var teams = _db.USP_S_SELECT_USER_TEAM_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_USER_TEAM_LIST")
+            .AsEnumerable()
+            .ToList();
+
+        return JsonOk(new { teams });
+    }
+
+    [AjaxAuth]
+    [HttpGet("users")]
+    [Produces("application/json")]
+    public IActionResult SearchUsers(string? keyword, string? team)
+    {
+        var users = _db.USP_S_SELECT_USER_SEARCH_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_USER_SEARCH_LIST {0}, {1}",
+                string.IsNullOrWhiteSpace(keyword) ? DBNull.Value : keyword,
+                string.IsNullOrWhiteSpace(team) ? DBNull.Value : team)
+            .AsEnumerable()
+            .ToList();
+
+        return JsonOk(new { users });
+    }
+
+    /* ================= 공통 ================= */
+
+    private string AppDomainUrl => _config["APP:DOMAIN"] ?? "https://localhost:7177";
+
+    private string CurrentUserName
+        => HttpContext.Session.GetString("FULL_NAME") ?? CurrentUserId ?? "시스템";
+
+    private ManualHeader? LoadHeader(string mId)
+        => _db.USP_S_SELECT_MANUAL
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_MANUAL {0}", mId)
+            .AsEnumerable().FirstOrDefault();
+
+    private IActionResult? DenyIfNotEditable(string mId)
+    {
+        var access = GetManualAccess(mId);
+        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
+        if (access.MEMBER_ROLE is null && access.USER_ROLE != "ADMIN")
+            return JsonFail(StatusCodes.Status403Forbidden, "이 문서의 참여자가 아닙니다.");
+        if (access.CAN_EDIT != "Y")
+            return JsonFail(StatusCodes.Status403Forbidden, "작성(DRAFT) 상태의 문서만 수정할 수 있습니다.");
+        return null;
+    }
+
+    private IActionResult ToJson(ResultModel? result)
+        => result is null || result.Success == 0
+            ? JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "요청을 처리하지 못했습니다.")
+            : JsonOk();
+}

@@ -1,0 +1,456 @@
+/* swal2 */
+.swal2-html-container {
+    white-space: pre-line;
+}
+.border-none {
+    border: none !important;
+}
+#page_loading {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: #fff;
+    display: flex;
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+}
+
+#calendar_list .card-body {
+    height: 700px;
+}
+
+#calendar_list {
+    height: auto !important;
+}
+
+#chart_list {
+    height: 270px !important;
+}
+
+.scrolledTable {
+    overflow-y: auto;
+    clear: both;
+    /*height: 350px;*/
+}
+#today_notice .scrolledTable {
+    height: 350px;
+}
+
+.dz-progress {
+    /* progress bar covers file name */
+    display: none !important;
+}
+.w-200-px {
+    width: 200px;
+}
+.w-300-px {
+    width: 300px;
+}
+.bottom-110 {
+    bottom: 110%;
+}
+.start-110 {
+    left: 110%;
+}
+.max-h-100 {
+    max-height: 100% !important;
+}
+.overflow-y-auto {
+    overflow-y: auto;
+}
+
+.TopMenuNoti {
+    color: #fff;
+    /* padding: 5px; */
+    background: red;
+    /* width: 10px; */
+    /* margin: 0 auto; */
+    text-align: center;
+    padding: 0 5px;
+    border-radius: 25%;
+    margin-left: 5px;
+}
+
+@media (min-width: 992px) {
+    .content {
+        padding: 10px 0px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .modal-xl-wide {
+        max-width: 1700px;
+    }
+}
+
+.table {
+    width: 100%;
+    margin-bottom: 1rem;
+    color: #3f4254;
+    background-color: transparent;
+}
+
+.table th,
+.table td {
+    padding: 0.75rem;
+    vertical-align: top;
+    border-top: 1px solid #ebedf3;
+}
+
+.table thead th {
+    vertical-align: bottom;
+    border-bottom: 2px solid #ebedf3;
+}
+
+.table tbody + tbody {
+    border-top: 2px solid #ebedf3;
+}
+
+.table-sm th,
+.table-sm td {
+    padding: 0.3rem;
+}
+
+.table-bordered {
+    border: 1px solid #ebedf3;
+}
+
+.table-bordered th,
+.table-bordered td {
+    border: 1px solid #ebedf3;
+}
+
+.table-bordered thead th,
+.table-bordered thead td {
+    border-bottom-width: 2px;
+}
+
+.table-borderless th,
+.table-borderless td,
+.table-borderless thead th,
+.table-borderless tbody + tbody {
+    border: 0;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: #ebedf3;
+}
+
+.table-hover tbody tr:hover {
+    color: #3f4254;
+    background-color: #e4e6ef;
+}
+
+.table-primary,
+.table-primary > th,
+.table-primary > td {
+    background-color: #c7e2ff;
+}
+
+.table-primary th,
+.table-primary td,
+.table-primary thead th,
+.table-primary tbody + tbody {
+    border-color: #96caff;
+}
+
+.table-hover .table-primary:hover {
+    background-color: #aed5ff;
+}
+
+.table-hover .table-primary:hover > td,
+.table-hover .table-primary:hover > th {
+    background-color: #aed5ff;
+}
+
+.table-secondary,
+.table-secondary > th,
+.table-secondary > td {
+    background-color: #f7f8fb;
+}
+
+.table-secondary th,
+.table-secondary td,
+.table-secondary thead th,
+.table-secondary tbody + tbody {
+    border-color: #f1f2f7;
+}
+
+.table-hover .table-secondary:hover {
+    background-color: #e6e9f3;
+}
+
+.table-hover .table-secondary:hover > td,
+.table-hover .table-secondary:hover > th {
+    background-color: #e6e9f3;
+}
+
+.table-success,
+.table-success > th,
+.table-success > td {
+    background-color: #bfefed;
+}
+
+.table-success th,
+.table-success td,
+.table-success thead th,
+.table-success tbody + tbody {
+    border-color: #88e1dd;
+}
+
+.table-hover .table-success:hover {
+    background-color: #abeae7;
+}
+
+.table-hover .table-success:hover > td,
+.table-hover .table-success:hover > th {
+    background-color: #abeae7;
+}
+
+.table-info,
+.table-info > th,
+.table-info > td {
+    background-color: #decefe;
+}
+
+.table-info th,
+.table-info td,
+.table-info thead th,
+.table-info tbody + tbody {
+    border-color: #c2a4fd;
+}
+
+.table-hover .table-info:hover {
+    background-color: #cdb5fd;
+}
+
+.table-hover .table-info:hover > td,
+.table-hover .table-info:hover > th {
+    background-color: #cdb5fd;
+}
+
+.table-warning,
+.table-warning > th,
+.table-warning > td {
+    background-color: #ffe7b8;
+}
+
+.table-warning th,
+.table-warning td,
+.table-warning thead th,
+.table-warning tbody + tbody {
+    border-color: #ffd27a;
+}
+
+.table-hover .table-warning:hover {
+    background-color: #ffde9f;
+}
+
+.table-hover .table-warning:hover > td,
+.table-hover .table-warning:hover > th {
+    background-color: #ffde9f;
+}
+
+.table-danger,
+.table-danger > th,
+.table-danger > td {
+    background-color: #fccdd2;
+}
+
+.table-danger th,
+.table-danger td,
+.table-danger thead th,
+.table-danger tbody + tbody {
+    border-color: #faa3ac;
+}
+
+.table-hover .table-danger:hover {
+    background-color: #fbb5bc;
+}
+
+.table-hover .table-danger:hover > td,
+.table-hover .table-danger:hover > th {
+    background-color: #fbb5bc;
+}
+
+.table-light,
+.table-light > th,
+.table-light > td {
+    background-color: #fcfcfd;
+}
+
+.table-light th,
+.table-light td,
+.table-light thead th,
+.table-light tbody + tbody {
+    border-color: #f9fafc;
+}
+
+.table-hover .table-light:hover {
+    background-color: #ededf3;
+}
+
+.table-hover .table-light:hover > td,
+.table-hover .table-light:hover > th {
+    background-color: #ededf3;
+}
+
+.table-dark,
+.table-dark > th,
+.table-dark > td {
+    background-color: #bebfc6;
+}
+
+.table-dark th,
+.table-dark td,
+.table-dark thead th,
+.table-dark tbody + tbody {
+    border-color: #878994;
+}
+
+.table-hover .table-dark:hover {
+    background-color: #b0b2ba;
+}
+
+.table-hover .table-dark:hover > td,
+.table-hover .table-dark:hover > th {
+    background-color: #b0b2ba;
+}
+
+.table-white,
+.table-white > th,
+.table-white > td {
+    background-color: white;
+}
+
+.table-white th,
+.table-white td,
+.table-white thead th,
+.table-white tbody + tbody {
+    border-color: white;
+}
+
+.table-hover .table-white:hover {
+    background-color: #f2f2f2;
+}
+
+.table-hover .table-white:hover > td,
+.table-hover .table-white:hover > th {
+    background-color: #f2f2f2;
+}
+
+.table-active,
+.table-active > th,
+.table-active > td {
+    background-color: #e4e6ef;
+}
+
+.table-hover .table-active:hover {
+    background-color: #d4d7e6;
+}
+
+.table-hover .table-active:hover > td,
+.table-hover .table-active:hover > th {
+    background-color: #d4d7e6;
+}
+
+.table .thead-dark th {
+    color: #ffffff;
+    background-color: #181c32;
+    border-color: #242a4c;
+}
+
+.table .thead-light th {
+    color: #3f4254;
+    background-color: #f3f6f9;
+    border-color: #ebedf3;
+}
+
+.table-dark {
+    color: #ffffff;
+    background-color: #181c32;
+}
+
+.table-dark th,
+.table-dark td,
+.table-dark thead th {
+    border-color: #242a4c;
+}
+
+.table-dark.table-bordered {
+    border: 0;
+}
+
+.table-dark.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.table-dark.table-hover tbody tr:hover {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.075);
+}
+
+.dataTable > thead > tr > th.remove-sort[class*='sort']:before,
+.dataTable > thead > tr > th.remove-sort[class*='sort']:after {
+    display: none !important;
+}
+
+.pointer {
+    cursor: pointer;
+}
+
+.max-w-50px {
+    max-width: 50px !important;
+}
+
+.max-w-100px {
+    max-width: 100px !important;
+}
+
+.max-w-200px {
+    max-width: 200px !important;
+}
+
+.unread_item {
+    background-color: #f2f6fc !important;
+}
+
+.open_item {
+    background-color: #f0d8ec !important;
+}
+
+.clicked_item {
+    background-color: #f2f6fc !important;
+}
+
+/* 원본 프로젝트는 #app 을 opacity:0 으로 숨겼다가 JS 로 .opacity-100 을 붙여 드러냈다.
+   이 앱은 그 노출 로직을 쓰지 않으므로 규칙을 제거한다. (남겨두면 모든 Vue 화면이 투명해짐) */
+.opacity-100 {
+    opacity: 100 !important;
+}
+#app .ck-content {
+    min-height: 42px;
+}
+.ck.ck-balloon-panel.ck-balloon-panel_position_border-side_right.ck-balloon-panel_visible {
+    display: none !important;
+}
+.cursor-move {
+    cursor: move;
+}
+div[contenteditable='true'] {
+    user-select: text;
+}
+
+button.btn-outline-primary > i.bi {
+    color: var(--bs-primary);
+}
+
+button.btn-outline-primary:hover,
+button.btn-outline-primary:hover > i.bi,
+button.btn-primary:hover,
+button.btn-primary:hover > i.bi {
+    color: white;
+}

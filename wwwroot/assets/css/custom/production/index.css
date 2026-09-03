@@ -1,0 +1,110 @@
+@media (max-width: 991.98px) {
+    .aside {
+        display: block;
+    }
+}
+
+@media (min-width: 992px) {
+    .aside,
+    .aside .aside-secondary {
+        width: 300px;
+    }
+
+    #right_content {
+        width: calc(100% - 300px);
+    }
+}
+
+.tab-btn {
+    color: #a1a5b7;
+}
+
+#right_content_1 {
+    width: 300px;
+    min-width: 300px;
+    max-width: 300px;
+}
+
+#right_content_2 {
+    width: calc(100% - 300px);
+}
+
+.gantt-container .popup-wrapper {
+    background: transparent;
+    color: inherit;
+}
+
+.gantt-container .details-container {
+    background: #fff;
+    width: 200px;
+    word-wrap: break-word;
+    color: inherit;
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    padding: 0.4em;
+    border-radius: 0.3em;
+}
+
+.gantt-container .weekend-text {
+    fill: red;
+}
+
+.gantt .today-highlight {
+    fill: #d081ab;
+}
+
+#extend_btn {
+    right: -8px;
+    top: -8px;
+    z-index: 1;
+    transition: right;
+    transition-duration: 0.5s;
+}
+
+#extend_btn.active {
+    right: -18px;
+}
+
+.w-0 {
+    width: 0;
+}
+
+.bar-bg-warning .bar-progress {
+    fill: var(--bs-warning);
+}
+
+.bar-bg-success .bar-progress {
+    fill: var(--bs-success);
+}
+
+.bar-bg-info .bar-progress {
+    fill: var(--bs-info);
+}
+
+.bar-bg-primary .bar-progress {
+    fill: var(--bs-primary);
+}
+
+.bar-bg-dark .bar-progress {
+    fill: var(--bs-dark);
+}
+
+.bar-bg-secondary .bar-progress {
+    fill: var(--bs-secondary);
+}
+
+.bar-bg-danger .bar-progress {
+    fill: var(--bs-danger);
+}
+
+.bar-wrapper.disabled .handle.left,
+.bar-wrapper.disabled .handle.right {
+    display: none;
+}
+
+.rotate-icon::before {
+    transform: rotate(180deg);
+}
+
+#datatale_material_wrapper .dataTables_scrollBody {
+    height: auto !important;
+}

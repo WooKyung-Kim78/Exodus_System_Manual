@@ -1,0 +1,125 @@
+@model ExodusSystemManual.Models.PreviewViewModel
+@{
+    ViewData["Title"] = "Preview";
+    var h = Model.Header;
+    var sheetClass = h.PAGE_SIZE == "A4" ? "a4" : "letter";
+}
+
+@section css {
+    <link href="~/css/preview.css" rel="stylesheet" asp-append-version="true" />
+}
+
+<div class="preview-toolbar">
+    <a class="btn btn-sm btn-light" href="/editor?mid=@h.M_ID">← 편집기</a>
+    <a class="btn btn-sm btn-light" href="/manual/detail?mid=@h.M_ID">문서 정보</a>
+    <div class="ms-auto d-flex align-items-center gap-2">
+        <span id="pdfState" class="text-muted fs-8"></span>
+        <button class="btn btn-sm btn-light-primary" onclick="window.print()">인쇄</button>
+        <button class="btn btn-sm btn-primary" id="btnPdf">PDF 다운로드</button>
+    </div>
+</div>
+
+<div class="preview-stage" style="--doc-font:@Model.BodyFontStack; --doc-line-height:@Model.BodyLineHeight; --doc-letter-spacing:@(Model.BodyLetterSpacing)px;">
+    <div class="doc-sheet @sheetClass" id="docSheet" data-filename="@Model.FileName">
+
+        <!-- 표지 -->
+        <div class="doc-cover avoid-break">
+            @if (!string.IsNullOrWhiteSpace(Model.CoverLogoPath))
+            {
+                <img class="cover-logo" src="@Model.CoverLogoPath" alt="logo" />
+            }
+
+            <div class="cover-headline">
+                @if (!string.IsNullOrWhiteSpace(Model.CoverTitle1))
+                {
+                    <div>@Model.CoverTitle1</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.CoverTitle2))
+                {
+                    <div>@Model.CoverTitle2</div>
+                }
+                <div>@h.MODEL_NAME</div>
+                @if (!string.IsNullOrWhiteSpace(h.JOB_NUMBER))
+                {
+                    <div>@h.JOB_NUMBER</div>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(h.COVER_IMAGE_PATH))
+            {
+                <img class="cover-photo" src="@h.COVER_IMAGE_PATH" alt="product" />
+            }
+
+            <div class="cover-meta">
+                Document No. @h.DOC_NUM · Rev @h.REVISION ·
+                @((h.PUBLISH_DATE ?? h.REG_DT).ToString("yyyy-MM-dd"))
+            </div>
+        </div>
+
+        @if (Model.Sections.Count > 0)
+        {
+            <!-- 목차 -->
+            <div class="page-break"></div>
+            <div class="doc-toc avoid-break">
+                <div class="doc-toc-title">목차</div>
+                @foreach (var s in Model.Sections)
+                {
+                    <div class="toc-row lv@(s.SEC_LEVEL)">
+                        <span class="toc-no">@s.SEC_NO</span>
+                        <span>@s.TITLE</span>
+                    </div>
+                }
+            </div>
+
+            <!-- 본문 -->
+            @foreach (var s in Model.Sections)
+            {
+                var style = Model.StyleOf(s);
+                var blocks = Model.Blocks.TryGetValue(s.SEC_ID, out var list) ? list : new List<ExodusSystemManual.Models.ElementItem>();
+
+                if (s.SEC_LEVEL == 1)
+                {
+                    <div class="page-break"></div>
+                }
+
+                <div class="doc-section">
+                    <div class="doc-section-title avoid-break" style="@style.ToCss()">
+                        @if (!string.IsNullOrWhiteSpace(s.SEC_NO))
+                        {
+                            <span class="sec-no">@s.SEC_NO</span>
+                        }
+                        <span>@s.TITLE</span>
+                    </div>
+
+                    @foreach (var b in blocks)
+                    {
+                        <div class="doc-block avoid-break">
+                            @if (b.ELE_TYPE == "IMAGE" && !string.IsNullOrEmpty(b.IMAGE_PATH))
+                            {
+                                <img src="@b.IMAGE_PATH" alt="@b.CAPTION" style="width:@(b.WIDTH > 0 ? b.WIDTH : 100)%" />
+                                @if (!string.IsNullOrWhiteSpace(b.CAPTION))
+                                {
+                                    <div class="block-caption">@b.CAPTION</div>
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(b.CONTENT_HTML))
+                            {
+                                @Html.Raw(b.CONTENT_HTML)
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <div class="page-break"></div>
+            <p class="text-center text-muted">작성된 목차가 없습니다.</p>
+        }
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/assets/plugins/custom/html2pdf/html2pdf.bundle.min.js"></script>
+    <script src="~/js/custom/manual/preview.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,61 @@
+@{
+    ViewData["Title"] = "사용자 권한";
+}
+
+<div class="container-fluid" id="app" v-cloak>
+    <div class="d-flex align-items-center justify-content-between mb-5">
+        <div>
+            <h1 class="h4 mb-1">사용자 권한</h1>
+            <div class="text-muted fs-7">역할은 관리자 · 유저 · 읽기전용 세 가지입니다.</div>
+        </div>
+        <div class="d-flex gap-2">
+            <input type="text" class="form-control form-control-sm w-250px" placeholder="이름 · 아이디 · 팀 검색"
+                   v-model.trim="keyword" @@keyup.enter="callList" />
+            <button class="btn btn-sm btn-light-primary" @@click="callList">검색</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div v-if="loading" class="text-center text-muted py-15">불러오는 중...</div>
+            <div v-else-if="!list.length" class="text-center text-muted py-15">사용자가 없습니다.</div>
+            <table v-else class="table table-row-bordered align-middle mb-0">
+                <thead class="fw-bold text-muted bg-light">
+                    <tr>
+                        <th class="ps-5">이름</th>
+                        <th style="width:160px">아이디</th>
+                        <th style="width:220px">소속</th>
+                        <th style="width:110px">계정 상태</th>
+                        <th class="pe-5" style="width:200px">역할</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="u in list" :key="u.USER_ID">
+                        <td class="ps-5 fw-bold">{{ u.FULL_NAME }}</td>
+                        <td class="text-muted">{{ u.USER_ID }}</td>
+                        <td class="text-muted fs-8">{{ u.DIVISION }} <span v-if="u.TEAM">/ {{ u.TEAM }}</span></td>
+                        <td>
+                            <span :class="u.AUTHORIZED === 'Y' ? 'badge badge-light-success' : 'badge badge-light-warning'">
+                                {{ u.AUTHORIZED === 'Y' ? '승인' : '대기' }}
+                            </span>
+                        </td>
+                        <td class="pe-5">
+                            <select class="form-select form-select-sm" :value="u.ROLE_NAME"
+                                    :disabled="saving === u.USER_ID || !selectable(u.ROLE_NAME)"
+                                    @@change="changeRole(u, $event.target.value)">
+                                <option value="ADMIN">관리자</option>
+                                <option value="USER">유저</option>
+                                <option value="READER">읽기전용</option>
+                                <option v-if="!selectable(u.ROLE_NAME)" :value="u.ROLE_NAME">{{ u.ROLE_NAME }}</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/js/custom/admin/userRole.js" asp-append-version="true"></script>
+}

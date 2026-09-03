@@ -1,0 +1,180 @@
+:root {
+    --doc-font: Arial, Helvetica, sans-serif;
+    --doc-line-height: 1;
+    --doc-letter-spacing: 0px;
+}
+
+.editor-page {
+    display: flex;
+    gap: 0;
+    align-items: flex-start;
+    min-height: calc(100vh - 200px);
+}
+
+/* 좌측 목차 — 본문을 스크롤해도 따라오도록 고정 */
+.outline-pane {
+    flex: 0 0 260px;
+    background: #fff;
+    border: 1px solid #e4e6ef;
+    border-radius: .625rem;
+    padding: 1rem;
+    overflow-y: auto;
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 120px);
+}
+
+.outline-item {
+    display: flex;
+    align-items: center;
+    gap: .375rem;
+    padding: .375rem .5rem;
+    border-radius: .375rem;
+    cursor: pointer;
+    font-size: .875rem;
+    line-height: 1.35;
+}
+
+.outline-item:hover { background: #f1f3f9; }
+.outline-item.active { background: #e8f2ff; }
+
+.outline-item.lv1 { font-weight: 700; color: #181c32; }
+.outline-item.lv2 { padding-left: 1.5rem; font-weight: 500; color: #3f4254; }
+.outline-item.lv3 { padding-left: 2.75rem; font-weight: 400; color: #5e6278; }
+
+.outline-no {
+    flex: 0 0 auto;
+    color: #a1a5b7;
+    font-variant-numeric: tabular-nums;
+}
+
+.outline-title {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 우측 본문 */
+.content-pane {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-left: 1.5rem;
+}
+
+.block-card {
+    border: 1px solid #e4e6ef;
+    border-radius: .625rem;
+    background: #fff;
+    margin-bottom: 1rem;
+}
+
+.block-toolbar {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .375rem .75rem;
+    border-bottom: 1px solid #f1f3f9;
+    background: #fcfcfd;
+    border-radius: .625rem .625rem 0 0;
+}
+
+.block-body { padding: .75rem 1rem 1rem; }
+
+/* 편집기 전체를 하나의 입력 상자로 묶는다 */
+.block-body .ck.ck-editor {
+    border: 1px solid #d8dae5;
+    border-radius: .5rem;
+    overflow: hidden;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.block-body .ck.ck-editor:focus-within {
+    border-color: #009ef7;
+    box-shadow: 0 0 0 3px rgba(0, 158, 247, .12);
+}
+
+.block-body .ck-editor__editable {
+    min-height: 360px;
+    padding: 1rem 1.25rem;
+    font-size: 12pt;
+    line-height: var(--doc-line-height);
+    letter-spacing: var(--doc-letter-spacing);
+    background: #fff;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* 글꼴·크기는 문서 전체 통일이라 과거 데이터의 인라인 값을 무시한다. */
+.block-body .ck-editor__editable,
+.block-body .ck-editor__editable * {
+    font-family: var(--doc-font) !important;
+    font-size: 12pt !important;
+}
+
+/* 편집 화면도 미리보기와 같은 간격으로 보여야 한다. */
+.block-body .ck-editor__editable p,
+.block-body .ck-editor__editable ul,
+.block-body .ck-editor__editable ol,
+.block-body .ck-editor__editable li,
+.block-body .ck-editor__editable h1,
+.block-body .ck-editor__editable h2,
+.block-body .ck-editor__editable h3,
+.block-body .ck-editor__editable h4 { margin: 0; }
+
+/* 편집 중인 블록은 더 넓게 */
+.block-body .ck-editor__editable.ck-focused {
+    min-height: 520px;
+}
+
+/* 아래쪽 모서리를 끌어 크기를 직접 조절 */
+.block-body .ck-editor__main {
+    resize: vertical;
+    overflow: auto;
+    min-height: 360px;
+}
+
+.block-body .ck.ck-toolbar {
+    border: none;
+    border-bottom: 1px solid #e4e6ef;
+    background: #f9f9fb;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+/* CKEditor 는 표를 figure.table 로 감싸서 Metronic 의 .table 규칙이 셀 테두리를 지운다 */
+.block-body .ck-content figure.table > table {
+    border: 1px solid #b3b3b3 !important;
+    border-collapse: collapse;
+}
+
+.block-body .ck-content figure.table > table td,
+.block-body .ck-content figure.table > table th {
+    border: 1px solid #bfbfbf !important;
+    padding: .4em !important;
+    box-shadow: none !important;
+}
+
+.block-body .ck-content figure.table > table th {
+    background: rgba(0, 0, 0, .05);
+    font-weight: 700;
+}
+
+.image-block-preview {
+    max-width: 100%;
+    display: block;
+    margin: 0 auto;
+}
+
+.image-block-caption {
+    text-align: center;
+    font-size: .8125rem;
+    color: #78829d;
+    margin-top: .5rem;
+}
+
+/* 제목 레벨 미리보기 */
+.heading-preview-1 { font-size: 1.35rem; font-weight: 700; }
+.heading-preview-2 { font-size: 1.15rem; font-weight: 600; }
+.heading-preview-3 { font-size: 1rem; font-weight: 600; }

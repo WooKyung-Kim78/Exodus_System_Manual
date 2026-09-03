@@ -1,0 +1,113 @@
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<div class="container-fluid" id="app" v-cloak>
+    <h1 class="h3 mb-6">메일 설정</h1>
+
+    <div class="row g-6">
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header"><h3 class="card-title">SMTP</h3></div>
+                <div class="card-body">
+                    <div v-if="testMode" class="alert alert-info py-3 fs-8">
+                        적용 범위가 <b>TEST</b> 입니다. 메일을 실제로 보내지 않고
+                        <code>App_Data/mail-drop</code> 폴더에 <code>.eml</code> 파일로 저장합니다.
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">발신자 이름</label>
+                        <input type="text" class="form-control" v-model.trim="setting.SYSTEM_NAME" maxlength="100" />
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">발신 주소</label>
+                        <input type="email" class="form-control" v-model.trim="setting.SYSTEM_EMAIL" maxlength="100" />
+                    </div>
+                    <div class="row g-4 mb-4">
+                        <div class="col-8">
+                            <label class="form-label">SMTP 서버</label>
+                            <input type="text" class="form-control" v-model.trim="setting.SYSTEM_SMTP" maxlength="100" />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">포트</label>
+                            <input type="number" class="form-control" v-model.trim="setting.SYSTEM_SMTP_PORT" />
+                        </div>
+                    </div>
+                    <div class="row g-4 mb-4">
+                        <div class="col-6">
+                            <label class="form-label">보안</label>
+                            <select class="form-select" v-model="setting.SYSTEM_SMTP_SECURE">
+                                <option value="STARTTLS">STARTTLS</option>
+                                <option value="SSL">SSL</option>
+                                <option value="NONE">없음</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">적용 범위</label>
+                            <select class="form-select" v-model="setting.SYSTEM_SMTP_SCOPE">
+                                <option value="T">TEST (파일로 저장)</option>
+                                <option value="P">PRODUCTION (실제 발송)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">계정 ID</label>
+                        <input type="text" class="form-control" v-model.trim="setting.SYSTEM_EMAIL_ID" maxlength="100" autocomplete="off" />
+                    </div>
+                    <div class="mb-6">
+                        <label class="form-label">계정 비밀번호</label>
+                        <input type="password" class="form-control" v-model="password" autocomplete="new-password"
+                               :placeholder="hasPassword ? '저장된 비밀번호 유지 (변경할 때만 입력)' : '비밀번호를 입력하세요'" />
+                        <div class="form-text">암호화되어 저장되며 화면으로 다시 내려주지 않습니다.</div>
+                    </div>
+
+                    <button class="btn btn-primary" :disabled="saving" @@click="save">
+                        {{ saving ? '저장 중...' : '설정 저장' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card mb-6">
+                <div class="card-header"><h3 class="card-title">테스트 발송</h3></div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label class="form-label">받는 사람</label>
+                        <input type="email" class="form-control" v-model.trim="testTo" placeholder="you@example.com" />
+                    </div>
+                    <button class="btn btn-light-primary w-100" :disabled="sending" @@click="sendTest">
+                        {{ sending ? '보내는 중...' : '테스트 메일 보내기' }}
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header align-items-center">
+                    <h3 class="card-title">발송 이력</h3>
+                    <div class="card-toolbar">
+                        <button class="btn btn-sm btn-light" @@click="callLog">새로고침</button>
+                    </div>
+                </div>
+                <div class="card-body p-0" style="max-height: 420px; overflow-y: auto;">
+                    <div v-if="!logs.length" class="text-muted text-center py-8 fs-8">발송 이력이 없습니다.</div>
+                    <div v-for="l in logs" :key="l.IDX" class="px-5 py-3 border-bottom">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-semibold fs-8">{{ l.SUBJECT }}</span>
+                            <span :class="l.IS_SUCCESS === 'Y' ? 'badge badge-light-success' : 'badge badge-light-danger'">
+                                {{ l.IS_SUCCESS === 'Y' ? '성공' : '실패' }}
+                            </span>
+                        </div>
+                        <div class="text-muted fs-9">{{ l.TO_LIST }}</div>
+                        <div class="text-muted fs-9">{{ formatDateTime(l.REG_DT) }} · {{ l.MAIL_TYPE }}</div>
+                        <div v-if="l.ERROR_MSG" class="text-danger fs-9">{{ l.ERROR_MSG }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/js/custom/admin/setting.js" asp-append-version="true"></script>
+}

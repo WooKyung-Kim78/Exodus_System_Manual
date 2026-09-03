@@ -1,0 +1,178 @@
+@{
+    ViewData["Title"] = "목차 템플릿";
+}
+
+<div class="container-fluid" id="app" v-cloak>
+    <div class="d-flex align-items-center justify-content-between mb-5">
+        <div>
+            <h1 class="h4 mb-1">목차 템플릿</h1>
+            <div class="text-muted fs-7">
+                문서를 새로 만들 때 <span class="fw-bold">필수</span> 목차가 자동으로 들어갑니다.
+                옵션 목차는 작성자가 편집기에서 골라 추가합니다.
+            </div>
+        </div>
+        <button class="btn btn-primary" @@click="openForm(null)">+ 목차 추가</button>
+    </div>
+
+    <div class="card mb-5">
+        <div class="card-body py-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label fs-8">Label</label>
+                    <select class="form-select form-select-sm" v-model="filter.label" @@change="callList">
+                        <option value="">전체</option>
+                        <option value="EXODUS">Exodus</option>
+                        <option value="OEM">OEM</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label fs-8">Cooling</label>
+                    <select class="form-select form-select-sm" v-model="filter.cooling" @@change="callList">
+                        <option value="">전체</option>
+                        <option value="AIR">Air</option>
+                        <option value="LIQUID">Liquid</option>
+                    </select>
+                </div>
+                <div class="col text-muted fs-8">
+                    조합을 고르면 그 조합의 문서에 실제로 들어갈 목차만 보입니다. (공통 항목 포함)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div v-if="loading" class="text-center text-muted py-15">불러오는 중...</div>
+            <div v-else-if="!list.length" class="text-center text-muted py-15">
+                등록된 목차가 없습니다.
+            </div>
+            <table v-else class="table table-row-bordered align-middle mb-0">
+                <thead class="fw-bold text-muted bg-light">
+                    <tr>
+                        <th class="ps-5" style="width:70px">순서</th>
+                        <th style="width:90px">구분</th>
+                        <th style="width:180px">적용 범위</th>
+                        <th style="width:80px">번호</th>
+                        <th>제목</th>
+                        <th style="width:180px">담당 팀</th>
+                        <th class="text-end pe-5" style="width:190px">관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(t, i) in list" :key="t.TPL_ID">
+                        <td class="ps-5 text-muted">{{ i + 1 }}</td>
+                        <td>
+                            <span :class="t.IS_MANDATORY === 'Y' ? 'badge badge-light-danger' : 'badge badge-light-primary'">
+                                {{ t.IS_MANDATORY === 'Y' ? '필수' : '옵션' }}
+                            </span>
+                        </td>
+                        <td class="fs-8 text-muted">{{ scopeLabel(t) }}</td>
+                        <td class="text-muted">{{ t.SEC_NO }}</td>
+                        <td>
+                            <span :class="'tpl-title lv' + t.SEC_LEVEL">{{ t.TITLE }}</span>
+                            <span class="badge badge-light fs-9 ms-2">{{ levelLabel(t.SEC_LEVEL) }}</span>
+                        </td>
+                        <td class="fs-8">
+                            <span v-if="t.ASSIGNED_TEAM">{{ t.ASSIGNED_TEAM }}</span>
+                            <span v-else class="text-muted">미지정</span>
+                        </td>
+                        <td class="text-end pe-5">
+                            <button class="btn btn-sm btn-light py-1 px-2" :disabled="i === 0" @@click="move(i, -1)">↑</button>
+                            <button class="btn btn-sm btn-light py-1 px-2" :disabled="i === list.length - 1" @@click="move(i, 1)">↓</button>
+                            <button class="btn btn-sm btn-light py-1 px-2 ms-2" @@click="openForm(t)">수정</button>
+                            <button class="btn btn-sm btn-light-danger py-1 px-2" @@click="remove(t)">삭제</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" tabindex="-1" id="tplModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ form.TPL_ID ? '목차 수정' : '목차 추가' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div v-if="formError" class="alert alert-danger py-3">{{ formError }}</div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-6">
+                            <label class="form-label">Label</label>
+                            <select class="form-select" v-model="form.LABEL">
+                                <option value="">전체 공통</option>
+                                <option value="EXODUS">Exodus</option>
+                                <option value="OEM">OEM</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Cooling</label>
+                            <select class="form-select" v-model="form.COOLING">
+                                <option value="">전체 공통</option>
+                                <option value="AIR">Air</option>
+                                <option value="LIQUID">Liquid</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-6">
+                            <label class="form-label required">제목 단계</label>
+                            <select class="form-select" v-model.number="form.SEC_LEVEL">
+                                <option :value="1">대제목</option>
+                                <option :value="2">중제목</option>
+                                <option :value="3">소제목</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label required">구분</label>
+                            <select class="form-select" v-model="form.IS_MANDATORY">
+                                <option value="Y">필수 (자동 삽입)</option>
+                                <option value="N">옵션 (직접 추가)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">번호</label>
+                        <input type="text" class="form-control" v-model.trim="form.SEC_NO" maxlength="20" placeholder="예: 1  /  1.1  /  1.1.1" />
+                    </div>
+                    <div>
+                        <label class="form-label required">제목</label>
+                        <input type="text" class="form-control" v-model.trim="form.TITLE" maxlength="200" />
+                    </div>
+
+                    <div class="separator my-4"></div>
+
+                    <div>
+                        <label class="form-label">담당 팀</label>
+                        <select class="form-select" v-model="form.ASSIGNED_TEAM">
+                            <option value="">미지정</option>
+                            <option v-for="t in teams" :key="t.DIVISION + '/' + t.TEAM" :value="t.TEAM">{{ t.DIVISION }} / {{ t.TEAM }}</option>
+                        </select>
+                        <div class="form-text">
+                            지정한 팀은 문서가 생길 때 목차 담당 팀으로 복사됩니다.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" :disabled="saving" @@click="save">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section css {
+    <style>
+        .tpl-title.lv2 { padding-left: 1.25rem; color: #3f4254; }
+        .tpl-title.lv3 { padding-left: 2.5rem; color: #5e6278; }
+    </style>
+}
+
+@section scripts {
+    <script src="~/js/custom/admin/sectionTemplate.js" asp-append-version="true"></script>
+}

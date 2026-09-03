@@ -1,0 +1,416 @@
+@{
+    ViewData["Title"] = "Manual Detail";
+    var mid = ViewData["MID"] as string;
+}
+
+<div class="container-fluid" id="app" v-cloak data-mid="@mid">
+    <div v-if="loading" class="text-center text-muted py-20">불러오는 중...</div>
+
+    <template v-else-if="header">
+        <div class="d-flex align-items-center justify-content-between mb-6">
+            <div>
+                <div class="d-flex align-items-center gap-3">
+                    <h1 class="h3 mb-0">{{ header.MODEL_NAME }}</h1>
+                    <span :class="statusClass(header.STATUS)">{{ statusLabel(header.STATUS) }}</span>
+                    <span class="badge badge-light">Rev {{ header.REVISION }}</span>
+                </div>
+                <div class="text-muted fs-7 mt-1">{{ header.DOC_NUM }} · 등록 {{ formatDate(header.REG_DT) }}</div>
+            </div>
+            <div class="d-flex gap-2">
+                <a class="btn btn-light" href="/manual">목록</a>
+                <button class="btn btn-light-primary" :disabled="!canEdit" @@click="openNotify">작성 요청 보내기</button>
+                <a class="btn btn-light-primary" :href="'/manual/preview?mid=' + mid">미리보기 · PDF</a>
+                <button class="btn btn-primary" :disabled="!canEdit" @@click="goEditor">본문 편집</button>
+            </div>
+        </div>
+
+        <div v-if="!canEdit" class="alert alert-warning py-3">
+            읽기 전용입니다. (작성(DRAFT) 상태의 참여자만 수정할 수 있습니다.)
+        </div>
+
+        <div class="row g-6">
+            <!-- 기본 정보 -->
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header align-items-center">
+                        <h3 class="card-title">기본 정보</h3>
+                        <div class="card-toolbar">
+                            <button class="btn btn-sm btn-light-primary" :disabled="!canEdit" @@click="openDocStyle">문서 스타일</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <label class="form-label required">Model Name</label>
+                            <input type="text" class="form-control" v-model.trim="header.MODEL_NAME" :disabled="!canEdit" maxlength="100" />
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Job Number</label>
+                            <input type="text" class="form-control" v-model.trim="header.JOB_NUMBER" :disabled="!canEdit" maxlength="50" />
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Label</label>
+                            <select class="form-select" v-model="header.LABEL" :disabled="!canEdit">
+                                <option :value="null">선택 안 함</option>
+                                <option value="EXODUS">Exodus</option>
+                                <option value="OEM">OEM</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Cooling</label>
+                            <select class="form-select" v-model="header.COOLING" :disabled="!canEdit">
+                                <option :value="null">선택 안 함</option>
+                                <option value="AIR">Air</option>
+                                <option value="LIQUID">Liquid</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Option</label>
+                            <textarea class="form-control" rows="2" v-model.trim="header.OPTION_TEXT" :disabled="!canEdit" maxlength="500"></textarea>
+                        </div>
+                        <div class="mb-6">
+                            <label class="form-label">Page Size</label>
+                            <select class="form-select" v-model="header.PAGE_SIZE" :disabled="!canEdit">
+                                <option value="LETTER">Letter (216 x 279mm)</option>
+                                <option value="A4">A4 (210 x 297mm)</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary w-100" :disabled="!canEdit || savingHeader" @@click="saveHeader">
+                            {{ savingHeader ? '저장 중...' : '기본 정보 저장' }}
+                        </button>
+
+                        <div class="separator my-6"></div>
+
+                        <label class="form-label">표지 이미지</label>
+                        <div class="border rounded p-4 text-center mb-3" style="background:#f9f9fb">
+                            <img v-if="header.COVER_IMAGE_PATH" :src="header.COVER_IMAGE_PATH"
+                                 style="max-width:100%;max-height:160px" />
+                            <span v-else class="text-muted fs-8">미리보기 표지에 넣을 제품 사진을 올리세요.</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-light-primary flex-grow-1" :disabled="!canEdit || uploadingCover"
+                                    @@click="pickCover">
+                                {{ uploadingCover ? '업로드 중...' : '이미지 업로드' }}
+                            </button>
+                            <button class="btn btn-light-danger" :disabled="!canEdit || !header.COVER_IMAGE_PATH"
+                                    @@click="removeCover">삭제</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 섹션(목차) -->
+            <div class="col-lg-8">
+                <div class="card h-100">
+                    <div class="card-header align-items-center">
+                        <h3 class="card-title">목차 <span class="text-muted fs-7 ms-2">{{ sections.length }}개</span></h3>
+                        <div class="card-toolbar gap-2">
+                            <button class="btn btn-sm btn-light" :disabled="!canEdit" @@click="openTemplate">템플릿</button>
+                            <button class="btn btn-sm btn-primary" :disabled="!canEdit" @@click="openSection(null)">+ 목차 추가</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div v-if="!sections.length" class="text-center text-muted py-10">
+                            목차가 없습니다. 템플릿에서 가져오거나 직접 추가하세요.
+                        </div>
+                        <table v-else class="table table-row-bordered align-middle gy-2">
+                            <thead>
+                                <tr class="fw-bold fs-8 text-gray-600 text-uppercase">
+                                    <th class="w-60px">번호</th>
+                                    <th>제목</th>
+                                    <th class="w-160px">담당</th>
+                                    <th class="w-80px text-center">내용</th>
+                                    <th class="w-180px">최종 수정</th>
+                                    <th class="w-190px text-end">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="s in sections" :key="s.SEC_ID">
+                                    <td class="text-muted fs-8">{{ s.SEC_NO }}</td>
+                                    <td>
+                                        <span :style="{ paddingLeft: ((s.SEC_LEVEL - 1) * 16) + 'px' }"
+                                              :class="s.SEC_LEVEL === 1 ? 'fw-bold text-gray-800' : 'text-gray-700'">
+                                            {{ s.TITLE }}
+                                        </span>
+                                        <span class="badge badge-light fs-9 ms-2">{{ levelLabel(s.SEC_LEVEL) }}</span>
+                                    </td>
+                                    <td class="fs-8">
+                                        <div v-if="s.ASSIGNED_TEAM" class="text-gray-700">{{ s.ASSIGNED_TEAM }}</div>
+                                        <span v-else class="text-muted">전체</span>
+                                    </td>
+                                    <td class="text-center text-gray-600">{{ s.BLOCK_CNT }}</td>
+                                    <td class="fs-8">
+                                        <div v-if="s.EDITOR_NAME" class="text-gray-700">{{ s.EDITOR_NAME }}</div>
+                                        <div v-if="s.UPT_DT" class="text-muted">{{ formatDateTime(s.UPT_DT) }}</div>
+                                        <span v-if="!s.EDITOR_NAME && !s.UPT_DT" class="text-muted">-</span>
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <button class="btn btn-sm btn-light py-1 px-2"
+                                                :disabled="!canEditSection(s) || isFirst(s)" @@click="moveSection(s, -1)">↑</button>
+                                        <button class="btn btn-sm btn-light py-1 px-2"
+                                                :disabled="!canEditSection(s) || isLast(s)" @@click="moveSection(s, 1)">↓</button>
+                                        <button class="btn btn-sm btn-light py-1 px-2 ms-2"
+                                                :disabled="!canEditSection(s)" @@click="openSection(s)">수정</button>
+                                        <button class="btn btn-sm btn-light-danger py-1 px-2"
+                                                :disabled="!canEditSection(s)" @@click="removeSection(s)">삭제</button>
+                                        <a class="btn btn-sm btn-light-primary py-1 px-2 ms-2"
+                                           :href="'/editor?mid=' + mid + '&secId=' + s.SEC_ID">본문</a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="text-muted fs-8 mt-4">
+                            목차에 지정된 팀이 그대로 참여 범위가 됩니다. 팀을 바꾸려면 편집기에서 목차를 수정하세요.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 문서 스타일 모달 -->
+        <div class="modal fade" tabindex="-1" id="docStyleModal">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">문서 스타일 (문서 전체 공통)</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="fw-bold mb-3">본문</div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fs-8">글꼴</label>
+                                <select class="form-select form-select-sm" v-model="bodyFont">
+                                    <option value="ARIAL">Arial</option>
+                                    <option value="CALIBRI">Calibri</option>
+                                    <option value="VERDANA">Verdana</option>
+                                    <option value="TAHOMA">Tahoma</option>
+                                    <option value="GEORGIA">Georgia</option>
+                                    <option value="TIMES">Times New Roman</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fs-8">행간 (줄 간격)</label>
+                                <input type="number" class="form-control form-control-sm"
+                                       min="1" max="3" step="0.1" v-model.number="bodyLineHeight" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fs-8">자간 (px)</label>
+                                <input type="number" class="form-control form-control-sm"
+                                       min="-1" max="3" step="0.1" v-model.number="bodyLetterSpacing" />
+                            </div>
+                        </div>
+                        <div class="mt-3 p-3 bg-light rounded" :style="bodyCss">
+                            본문 미리보기 — The quick brown fox jumps over.<br />
+                            여러 줄일 때의 줄 간격을 이렇게 확인할 수 있습니다.
+                        </div>
+                        <div class="form-text mt-2">
+                            글자 크기는 12pt 로 고정입니다. 글꼴·행간·자간은 문서 전체에 동일하게 적용됩니다.
+                        </div>
+
+                        <div class="separator my-5"></div>
+
+                        <div class="text-muted fs-8 mb-4">
+                            개별 스타일을 지정한 목차는 여기서 바꿔도 그대로 유지됩니다.
+                        </div>
+
+                        <div v-for="lv in [1,2,3]" :key="lv" class="border-bottom pb-4 mb-4">
+                            <div class="fw-bold mb-3">{{ levelLabel(lv) }}</div>
+                            <div class="row g-3">
+                                <div class="col-3">
+                                    <label class="form-label fs-8">크기(pt)</label>
+                                    <input type="number" class="form-control form-control-sm" min="8" max="48"
+                                           v-model.number="headingStyle[lv].size" />
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label fs-8">글자색</label>
+                                    <input type="color" class="form-control form-control-sm form-control-color"
+                                           v-model="headingStyle[lv].color" />
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label fs-8">굵기</label>
+                                    <select class="form-select form-select-sm" v-model="headingStyle[lv].bold">
+                                        <option :value="true">굵게</option>
+                                        <option :value="false">보통</option>
+                                    </select>
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label fs-8">밑줄</label>
+                                    <select class="form-select form-select-sm" v-model="headingStyle[lv].underline">
+                                        <option :value="true">사용</option>
+                                        <option :value="false">없음</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mt-3 p-3 bg-light rounded" :style="headingCss(lv)">
+                                {{ levelLabel(lv) }} 미리보기
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">취소</button>
+                        <button type="button" class="btn btn-primary" @@click="saveDocStyle">저장</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 목차 편집 모달 -->
+        <div class="modal fade" tabindex="-1" id="sectionModal">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ secForm.SEC_ID ? '목차 수정' : '목차 추가' }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div v-if="secError" class="alert alert-danger py-3">{{ secError }}</div>
+
+                        <div class="row g-4 mb-4">
+                            <div class="col-6">
+                                <label class="form-label required">제목 단계</label>
+                                <select class="form-select" v-model.number="secForm.SEC_LEVEL">
+                                    <option :value="1">대제목</option>
+                                    <option :value="2">중제목</option>
+                                    <option :value="3">소제목</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">번호</label>
+                                <input type="text" class="form-control" v-model.trim="secForm.SEC_NO"
+                                       maxlength="20" placeholder="예: 1  /  1.1  /  1.1.1" />
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label required">제목</label>
+                            <input type="text" class="form-control" v-model.trim="secForm.TITLE" maxlength="200" />
+                        </div>
+                        <div>
+                            <label class="form-label">담당 팀</label>
+                            <select class="form-select" v-model="secForm.ASSIGNED_TEAM">
+                                <option :value="null">미지정 (참여자 모두 작성 가능)</option>
+                                <option v-for="t in teams" :key="t.DIVISION + '/' + t.TEAM" :value="t.TEAM">
+                                    {{ t.DIVISION }} / {{ t.TEAM }}
+                                </option>
+                            </select>
+                            <div class="form-text">팀을 지정하면 그 팀 소속만 내용을 작성·수정할 수 있습니다.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">취소</button>
+                        <button type="button" class="btn btn-primary" :disabled="savingSection" @@click="saveSection">저장</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 템플릿 목차 모달 -->
+        <div class="modal fade" tabindex="-1" id="templateModal">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">템플릿에서 목차 추가</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-muted fs-8 mb-4">
+                            이 문서의 Label·Cooling 에 맞는 항목입니다. 지운 목차는 여기서 다시 추가할 수 있습니다.
+                        </div>
+
+                        <div v-if="templateLoading" class="text-center text-muted py-10">불러오는 중...</div>
+                        <div v-else-if="!templateOptions.length" class="text-center text-muted py-10">
+                            등록된 템플릿 목차가 없습니다.
+                        </div>
+                        <table v-else class="table table-row-bordered align-middle mb-0">
+                            <tbody>
+                                <tr v-for="t in templateOptions" :key="t.TPL_ID" :class="{ 'opacity-50': t.IS_ADDED === 'Y' }">
+                                    <td style="width:70px">
+                                        <span :class="t.IS_MANDATORY === 'Y' ? 'badge badge-light-danger' : 'badge badge-light-primary'">
+                                            {{ t.IS_MANDATORY === 'Y' ? '필수' : '옵션' }}
+                                        </span>
+                                    </td>
+                                    <td style="width:80px" class="text-muted fs-8">{{ t.SEC_NO }}</td>
+                                    <td>
+                                        <span :style="{ paddingLeft: ((t.SEC_LEVEL - 1) * 16) + 'px' }">{{ t.TITLE }}</span>
+                                    </td>
+                                    <td class="fs-8 text-muted" style="width:150px">{{ t.ASSIGNED_TEAM }}</td>
+                                    <td class="text-end" style="width:100px">
+                                        <span v-if="t.IS_ADDED === 'Y'" class="badge badge-light fs-9">추가됨</span>
+                                        <button v-else class="btn btn-sm btn-light-primary py-1 px-3"
+                                                :disabled="!canEdit || addingTpl === t.TPL_ID"
+                                                @@click="addFromTemplate(t)">추가</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">닫기</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 작성 요청 모달 -->
+        <div class="modal fade" tabindex="-1" id="notifyModal">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">작성 요청 보내기</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div v-if="notifyTestMode" class="alert alert-info py-3 fs-8">
+                            메일 설정이 <b>TEST</b> 모드입니다. 실제 발송 대신
+                            <code>App_Data/mail-drop</code> 에 <code>.eml</code> 파일로 저장됩니다.
+                        </div>
+                        <div v-if="notifyError" class="alert alert-danger py-3">{{ notifyError }}</div>
+
+                        <div class="mb-4">
+                            <label class="form-label">메모 (선택)</label>
+                            <textarea class="form-control" rows="2" v-model.trim="notifyMemo" maxlength="500"
+                                      placeholder="예: 9월 10일까지 담당 섹션 작성 부탁드립니다."></textarea>
+                        </div>
+
+                        <label class="form-check form-check-sm form-check-custom mb-4">
+                            <input class="form-check-input" type="checkbox" v-model="notifyOnlyAssigned" />
+                            <span class="form-check-label">담당 목차가 있는 사람에게만 보내기</span>
+                        </label>
+
+                        <div class="fw-bold fs-8 text-muted text-uppercase mb-2">수신 예정</div>
+                        <table class="table table-row-bordered align-middle gy-2">
+                            <thead>
+                                <tr class="fw-bold fs-8 text-gray-600">
+                                    <th>이름</th>
+                                    <th class="w-110px">역할</th>
+                                    <th class="w-200px">이메일</th>
+                                    <th>담당 섹션</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="r in notifyTargets" :key="r.USER_ID">
+                                    <td class="fw-semibold">{{ r.FULL_NAME }}</td>
+                                    <td class="fs-8">{{ roleLabel(r.MEMBER_ROLE) }}</td>
+                                    <td class="fs-8 text-gray-600">{{ r.EMAIL_ADDRESS || '이메일 없음' }}</td>
+                                    <td class="fs-8 text-gray-600">{{ r.ASSIGNED_SECTIONS || '-' }}</td>
+                                </tr>
+                                <tr v-if="!notifyTargets.length">
+                                    <td colspan="4" class="text-muted text-center py-6">보낼 수신자가 없습니다.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">취소</button>
+                        <button type="button" class="btn btn-primary"
+                                :disabled="sendingNotify || !notifyTargets.length" @@click="sendNotify">
+                            {{ sendingNotify ? '보내는 중...' : notifyTargets.length + '명에게 보내기' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+
+@section scripts {
+    <script src="~/js/custom/manual/detail.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,328 @@
+@{
+    ViewData["Title"] = "Editor";
+    var mid = ViewData["MID"] as string;
+    var secId = ViewData["SEC_ID"] as long?;
+}
+
+@section css {
+    <link rel="stylesheet" href="~/assets/plugins/custom/ckeditor/ckeditor5.min.css" />
+    <link rel="stylesheet" href="~/css/editor.css" asp-append-version="true" />
+}
+
+<div class="container-fluid" id="app" v-cloak data-mid="@mid" data-sec-id="@secId">
+    <div v-if="loading" class="text-center text-muted py-20">불러오는 중...</div>
+
+    <template v-else-if="header">
+        <div class="d-flex align-items-center justify-content-between mb-5">
+            <div>
+                <div class="d-flex align-items-center gap-3">
+                    <h1 class="h4 mb-0">{{ header.MODEL_NAME }}</h1>
+                    <span :class="statusClass(header.STATUS)">{{ statusLabel(header.STATUS) }}</span>
+                    <span class="badge badge-light">Rev {{ header.REVISION }}</span>
+                </div>
+                <div class="text-muted fs-7 mt-1">{{ header.DOC_NUM }}</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted fs-8" style="min-width:70px">{{ saveState }}</span>
+                <a class="btn btn-light" :href="'/manual/detail?mid=' + mid">문서 정보</a>
+                <a class="btn btn-primary" :href="'/manual/preview?mid=' + mid">미리보기 · PDF</a>
+            </div>
+        </div>
+
+        <div v-if="!canEdit" class="alert alert-warning py-3">
+            읽기 전용입니다. 작성(DRAFT) 상태의 참여자만 편집할 수 있습니다.
+        </div>
+
+        <div class="editor-page">
+            <!-- 목차 -->
+            <div class="outline-pane">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <span class="fw-bold fs-8 text-muted text-uppercase">목차</span>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-light py-1 px-2" :disabled="!canEdit" @@click="openTemplate">템플릿</button>
+                        <button class="btn btn-sm btn-light-primary py-1 px-2" :disabled="!canEdit" @@click="openSection(null)">+ 추가</button>
+                    </div>
+                </div>
+
+                <div v-if="!sections.length" class="text-muted fs-8 px-2 py-4">
+                    목차가 없습니다.<br />템플릿에서 가져오거나 직접 추가하세요.
+                </div>
+
+                <div v-for="(s, i) in sections" :key="s.SEC_ID"
+                     class="outline-item"
+                     :class="['lv' + s.SEC_LEVEL, { active: s.SEC_ID === activeSecId }]"
+                     @@click="selectSection(s)">
+                    <span v-if="s.SEC_NO" class="outline-no">{{ s.SEC_NO }}</span>
+                    <span class="outline-title">{{ s.TITLE }}</span>
+                    <span v-if="s.BLOCK_CNT" class="badge badge-light fs-9">{{ s.BLOCK_CNT }}</span>
+                </div>
+
+                <div v-if="sections.length" class="border-top mt-3 pt-3 d-flex gap-1">
+                    <button class="btn btn-sm btn-light flex-grow-1" :disabled="!canEditActive" @@click="moveSection(-1)">↑</button>
+                    <button class="btn btn-sm btn-light flex-grow-1" :disabled="!canEditActive" @@click="moveSection(1)">↓</button>
+                    <button class="btn btn-sm btn-light flex-grow-1" :disabled="!canEditActive" @@click="openSection(activeSection)">✎</button>
+                    <button class="btn btn-sm btn-light-danger flex-grow-1" :disabled="!canEditActive" @@click="removeSection">×</button>
+                </div>
+            </div>
+
+            <!-- 본문 -->
+            <div class="content-pane">
+                <div v-if="!activeSection" class="card">
+                    <div class="card-body text-center text-muted py-20">
+                        왼쪽에서 목차를 선택하세요.
+                    </div>
+                </div>
+
+                <template v-else>
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <div>
+                            <div :class="'heading-preview-' + activeSection.SEC_LEVEL" :style="sectionCss(activeSection)">
+                                <span v-if="activeSection.SEC_NO" class="me-2">{{ activeSection.SEC_NO }}</span>{{ activeSection.TITLE }}
+                            </div>
+                            <div class="text-muted fs-8 mt-1">
+                                {{ levelLabel(activeSection.SEC_LEVEL) }}
+                                <span v-if="activeSection.STYLE_JSON"> · 개별 스타일</span>
+                                <span v-if="activeSection.ASSIGNED_TEAM"> · {{ activeSection.ASSIGNED_TEAM }} 담당</span>
+                                <span v-if="activeSection.EDITOR_NAME"> · 최종 수정 {{ activeSection.EDITOR_NAME }}</span>
+                                <button class="btn btn-sm btn-light py-0 px-2 ms-2 fs-9" @@click="openHistory">이력</button>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-light-primary" :disabled="!canEditActive" @@click="addBlock('TEXT')">+ 텍스트</button>
+                            <button class="btn btn-sm btn-light-primary" :disabled="!canEditActive" @@click="pickImage">+ 이미지</button>
+                        </div>
+                    </div>
+
+                    <div v-if="activeSection && !canEditActive && canEdit" class="alert alert-light-warning py-3 fs-8">
+                        이 목차는 <span class="fw-bold">{{ activeSection.ASSIGNED_TEAM }}</span> 담당입니다. 내용 수정은 해당 팀만 가능합니다.
+                    </div>
+
+                    <div v-if="!activeBlocks.length" class="card">
+                        <div class="card-body text-center text-muted py-15">
+                            내용이 없습니다. 텍스트나 이미지를 추가하세요.
+                        </div>
+                    </div>
+
+                    <div v-for="(b, i) in activeBlocks" :key="b.ELE_ID" class="block-card">
+                        <div class="block-toolbar">
+                            <span class="text-muted fs-9">{{ b.ELE_TYPE === 'TEXT' ? '텍스트' : '이미지' }}</span>
+                            <div class="ms-auto d-flex gap-1">
+                                <button class="btn btn-sm btn-icon btn-light py-0 px-2" :disabled="!canEditActive || i === 0" @@click="moveBlock(i, -1)">↑</button>
+                                <button class="btn btn-sm btn-icon btn-light py-0 px-2" :disabled="!canEditActive || i === activeBlocks.length - 1" @@click="moveBlock(i, 1)">↓</button>
+                                <button class="btn btn-sm btn-icon btn-light-danger py-0 px-2" :disabled="!canEditActive" @@click="removeBlock(b)">×</button>
+                            </div>
+                        </div>
+                        <div class="block-body">
+                            <div v-if="b.ELE_TYPE === 'TEXT'" :id="'ck-' + b.ELE_ID" class="ck-host"></div>
+                            <template v-else>
+                                <img :src="b.IMAGE_PATH" class="image-block-preview" :style="{ maxWidth: (b.WIDTH || 100) + '%' }" />
+                                <input type="text" class="form-control form-control-sm mt-3" placeholder="캡션 (선택)"
+                                       v-model="b.CAPTION" :disabled="!canEditActive" @@change="saveBlock(b)" maxlength="500" />
+                                <div class="d-flex align-items-center gap-2 mt-2">
+                                    <span class="text-muted fs-9">너비</span>
+                                    <input type="range" class="form-range" min="20" max="100" step="5"
+                                           v-model.number="b.WIDTH" :disabled="!canEditActive" @@change="saveBlock(b)" />
+                                    <span class="text-muted fs-9" style="min-width:38px">{{ b.WIDTH || 100 }}%</span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- 목차 편집 모달 -->
+        <div class="modal fade" tabindex="-1" id="sectionModal">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ secForm.SEC_ID ? '목차 수정' : '목차 추가' }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div v-if="secError" class="alert alert-danger py-3">{{ secError }}</div>
+
+                        <div class="mb-4">
+                            <label class="form-label required">제목 단계</label>
+                            <select class="form-select" v-model.number="secForm.SEC_LEVEL">
+                                <option :value="1">대제목</option>
+                                <option :value="2">중제목</option>
+                                <option :value="3">소제목</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">번호</label>
+                            <input type="text" class="form-control" v-model.trim="secForm.SEC_NO" maxlength="20" placeholder="예: 1  /  1.1  /  1.1.1" />
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label required">제목</label>
+                            <input type="text" class="form-control" v-model.trim="secForm.TITLE" maxlength="200" />
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">담당 팀</label>
+                            <select class="form-select" v-model="secForm.ASSIGNED_TEAM">
+                                <option :value="null">미지정 (참여자 모두 작성 가능)</option>
+                                <option v-for="t in teams" :key="t.DIVISION + '/' + t.TEAM" :value="t.TEAM">{{ t.DIVISION }} / {{ t.TEAM }}</option>
+                            </select>
+                            <div class="form-text">팀을 지정하면 그 팀 소속만 내용을 작성·수정할 수 있습니다.</div>
+                        </div>
+
+                        <div class="separator my-4"></div>
+
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div>
+                                <div class="fw-bold">제목 스타일</div>
+                                <div class="text-muted fs-8">끄면 {{ levelLabel(secForm.SEC_LEVEL) }} 공통 스타일을 따릅니다.</div>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" v-model="secStyleOn" id="secStyleOn" />
+                                <label class="form-check-label fs-8" for="secStyleOn">개별 지정</label>
+                            </div>
+                        </div>
+
+                        <div class="row g-3" :class="{ 'opacity-50': !secStyleOn }">
+                            <div class="col-3">
+                                <label class="form-label fs-8">크기(pt)</label>
+                                <input type="number" class="form-control form-control-sm" min="8" max="48"
+                                       :disabled="!secStyleOn" v-model.number="secStyle.size" />
+                            </div>
+                            <div class="col-3">
+                                <label class="form-label fs-8">글자색</label>
+                                <input type="color" class="form-control form-control-sm form-control-color"
+                                       :disabled="!secStyleOn" v-model="secStyle.color" />
+                            </div>
+                            <div class="col-3">
+                                <label class="form-label fs-8">굵기</label>
+                                <select class="form-select form-select-sm" :disabled="!secStyleOn" v-model="secStyle.bold">
+                                    <option :value="true">굵게</option>
+                                    <option :value="false">보통</option>
+                                </select>
+                            </div>
+                            <div class="col-3">
+                                <label class="form-label fs-8">밑줄</label>
+                                <select class="form-select form-select-sm" :disabled="!secStyleOn" v-model="secStyle.underline">
+                                    <option :value="true">사용</option>
+                                    <option :value="false">없음</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 p-3 bg-light rounded" :style="secFormCss">
+                            <span v-if="secForm.SEC_NO" class="me-2">{{ secForm.SEC_NO }}</span>{{ secForm.TITLE || '미리보기' }}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">취소</button>
+                        <button type="button" class="btn btn-primary" :disabled="savingSection" @@click="saveSection">저장</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 수정 이력 모달 -->
+        <div class="modal fade" tabindex="-1" id="historyModal">
+            <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title">수정 이력</h5>
+                            <div class="text-muted fs-8" v-if="activeSection">{{ activeSection.TITLE }}</div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div v-if="historyLoading" class="text-center text-muted py-10">불러오는 중...</div>
+                        <div v-else-if="!history.length" class="text-center text-muted py-10">이력이 없습니다.</div>
+                        <table v-else class="table table-row-bordered align-middle mb-0">
+                            <thead class="fw-bold fs-8 text-muted bg-light">
+                                <tr>
+                                    <th class="ps-4" style="width:150px">일시</th>
+                                    <th style="width:150px">수정자</th>
+                                    <th style="width:110px">작업</th>
+                                    <th>대상</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="h in history" :key="h.HIS_ID">
+                                    <td class="ps-4 fs-8 text-muted">{{ formatDateTime(h.REG_DT) }}</td>
+                                    <td class="fs-8">
+                                        <div class="fw-bold">{{ h.REG_NAME }}</div>
+                                        <div class="text-muted" v-if="h.REG_TEAM">{{ h.REG_TEAM }}</div>
+                                    </td>
+                                    <td><span :class="actionClass(h.ACTION)">{{ actionLabel(h.ACTION) }}</span></td>
+                                    <td class="fs-8 text-gray-700">
+                                        {{ historyTarget(h) }}
+                                        <div v-if="h.FIELD_NAME === 'TITLE' && h.BEFORE_VALUE" class="text-muted">
+                                            {{ h.BEFORE_VALUE }} → {{ h.AFTER_VALUE }}
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <span class="text-muted fs-8 me-auto">최근 100건만 표시합니다.</span>
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">닫기</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 템플릿 목차 모달 -->
+        <div class="modal fade" tabindex="-1" id="templateModal">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">템플릿에서 목차 추가</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-muted fs-8 mb-4">
+                            이 문서의 Label·Cooling 에 맞는 항목입니다. 지운 목차는 여기서 다시 추가할 수 있습니다.
+                        </div>
+
+                        <div v-if="templateLoading" class="text-center text-muted py-10">불러오는 중...</div>
+                        <div v-else-if="!templateOptions.length" class="text-center text-muted py-10">
+                            등록된 템플릿 목차가 없습니다.
+                        </div>
+                        <div v-else class="table-responsive">
+                            <table class="table table-row-bordered align-middle mb-0">
+                                <tbody>
+                                    <tr v-for="t in templateOptions" :key="t.TPL_ID" :class="{ 'opacity-50': t.IS_ADDED === 'Y' }">
+                                        <td style="width:70px">
+                                            <span :class="t.IS_MANDATORY === 'Y' ? 'badge badge-light-danger' : 'badge badge-light-primary'">
+                                                {{ t.IS_MANDATORY === 'Y' ? '필수' : '옵션' }}
+                                            </span>
+                                        </td>
+                                        <td style="width:80px" class="text-muted">{{ t.SEC_NO }}</td>
+                                        <td>
+                                            <span :class="'outline-item lv' + t.SEC_LEVEL" style="padding:0">{{ t.TITLE }}</span>
+                                        </td>
+                                        <td class="fs-8 text-muted" style="width:150px">{{ t.ASSIGNED_TEAM }}</td>
+                                        <td class="text-end" style="width:100px">
+                                            <span v-if="t.IS_ADDED === 'Y'" class="badge badge-light fs-9">추가됨</span>
+                                            <button v-else class="btn btn-sm btn-light-primary py-1 px-3"
+                                                    :disabled="!canEdit || addingTpl === t.TPL_ID" @@click="addFromTemplate(t)">추가</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">닫기</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </template>
+</div>
+
+@section scripts {
+    <script type="importmap">
+        { "imports": { "ckeditor5": "/assets/plugins/custom/ckeditor/ckeditor5.min.js" } }
+    </script>
+    <script type="module" src="~/js/custom/manual/ckeditor-factory.js" asp-append-version="true"></script>
+    <script src="~/js/custom/manual/editor.js" asp-append-version="true"></script>
+}
