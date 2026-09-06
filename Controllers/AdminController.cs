@@ -18,16 +18,19 @@ public class AdminController : BaseController<AdminController>
     };
 
     private readonly SendMail _mail;
+    private readonly HtmlSanitize _sanitizer;
 
     public AdminController(
         ApplicationDbContext db,
         IWebHostEnvironment env,
         ILogger<AdminController> logger,
         IConfiguration config,
-        SendMail mail)
+        SendMail mail,
+        HtmlSanitize sanitizer)
         : base(db, env, logger, config)
     {
         _mail = mail;
+        _sanitizer = sanitizer;
     }
 
     [Auth("ADMIN, SUPPORTER")]
@@ -174,7 +177,7 @@ public class AdminController : BaseController<AdminController>
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 
         var result = _db.ResultModel
-            .FromSqlRaw("EXECUTE dbo.USP_S_MERGE_SECTION_TEMPLATE {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}",
+            .FromSqlRaw("EXECUTE dbo.USP_S_MERGE_SECTION_TEMPLATE {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}",
                 (object?)input.TPL_ID ?? DBNull.Value,
                 string.IsNullOrWhiteSpace(input.LABEL) ? DBNull.Value : input.LABEL,
                 string.IsNullOrWhiteSpace(input.COOLING) ? DBNull.Value : input.COOLING,
@@ -184,6 +187,8 @@ public class AdminController : BaseController<AdminController>
                 input.IS_MANDATORY,
                 (object?)input.ORDER_NUM ?? DBNull.Value,
                 string.IsNullOrWhiteSpace(input.ASSIGNED_TEAM) ? DBNull.Value : input.ASSIGNED_TEAM,
+                (object?)_sanitizer.Clean(input.CONTENT_HTML) ?? DBNull.Value,
+                input.TITLE_ALIGN,
                 CurrentUserId!)
             .AsEnumerable().FirstOrDefault();
 
@@ -226,6 +231,24 @@ public class AdminController : BaseController<AdminController>
             return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "순서를 저장하지 못했습니다.");
 
         return JsonOk();
+    }
+
+    [AjaxAuth("ADMIN")]
+    [HttpPost("section-template/image")]
+    [ValidateAntiForgeryToken]
+    [Consumes("multipart/form-data")]
+    [Produces("application/json")]
+    public async Task<IActionResult> UploadSectionTemplateImage(IFormFile? upload, IFormFile? file)
+    {
+        var image = upload ?? file;
+        if (image is null) return JsonFail(StatusCodes.Status400BadRequest, "이미지 파일을 선택하세요.");
+
+        var maxBytes = _config.GetValue<long>("APP:MAX_UPLOAD_BYTES", 20 * 1024 * 1024);
+        var result = await ImageUpload.SaveAsync(image, _env.ContentRootPath, "templates", maxBytes);
+        if (!result.Success)
+            return JsonFail(StatusCodes.Status400BadRequest, result.Message ?? "업로드에 실패했습니다.");
+
+        return Ok(new { url = result.WebPath, success = true, data = new { path = result.WebPath } });
     }
 
     /* ================= 사용자 역할 ================= */

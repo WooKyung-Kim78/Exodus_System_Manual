@@ -6,6 +6,10 @@
     var division = Context.Session.GetString("USER_DIVISION");
     var role = Context.Session.GetString("ROLE");
     var path = Context.Request.Path.Value?.ToLowerInvariant() ?? "/";
+    var trimmedName = (userName ?? string.Empty).Trim();
+    var initials = trimmedName.Length == 0 ? "EX"
+        : trimmedName.Length <= 2 ? trimmedName : trimmedName.Substring(0, 2);
+    var isAdminArea = role == "ADMIN" || role == "SUPPORTER";
 }
 <!DOCTYPE html>
 <html lang="ko">
@@ -14,121 +18,144 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#2FA7DA" />
     <title>@ViewData["Title"] - EXODUS System Manual</title>
     <link rel="shortcut icon" href="~/assets/media/logos/favicon.ico" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700" />
     <link href="~/assets/plugins/custom/datatables/datatables.bundle.css" rel="stylesheet" type="text/css" />
     <link href="~/assets/plugins/global/plugins.bundle.css" rel="stylesheet" type="text/css" />
     <link href="~/assets/css/style.bundle.css" rel="stylesheet" type="text/css" />
-    <link href="~/assets/css/custom.css" rel="stylesheet" type="text/css" />
+    <link href="~/assets/css/custom.css" rel="stylesheet" type="text/css" asp-append-version="true" />
     <link href="~/assets/plugins/custom/jquery-toast/jquery.toast.min.css" rel="stylesheet" type="text/css" />
     <link href="~/css/app.css" rel="stylesheet" asp-append-version="true" />
+    <link href="~/css/theme.css" rel="stylesheet" asp-append-version="true" />
     @await RenderSectionAsync("css", required: false)
 </head>
-<body id="kt_body" class="header-fixed header-tablet-and-mobile-fixed">
-    <div class="d-flex flex-column flex-root">
-        <div class="page d-flex flex-row flex-column-fluid">
-            <div class="wrapper d-flex flex-column flex-row-fluid">
+<body id="kt_body">
+    <div class="ex-shell">
 
-                <div id="kt_header" class="header align-items-stretch">
-                    <div class="container-fluid d-flex align-items-stretch justify-content-between">
-                        <div class="d-flex align-items-center flex-grow-1">
-                            <a href="/" class="d-flex align-items-center me-10">
-                                <span class="fs-3 fw-bolder text-dark">EXODUS</span>
-                                <span class="fs-6 fw-normal text-gray-600 ms-2">System Manual</span>
-                            </a>
+        <aside class="ex-sidebar" id="exSidebar">
+            <a href="/" class="ex-brand">
+                <span class="ex-brand-mark"></span>
+                <span class="ex-brand-text">
+                    <span class="ex-brand-name">EXODUS</span>
+                    <span class="ex-brand-sub">System Manual</span>
+                </span>
+            </a>
 
-                            <div class="menu menu-lg-rounded menu-column menu-lg-row menu-state-bg menu-title-gray-700 menu-state-title-primary menu-state-icon-primary menu-state-bullet-primary menu-arrow-gray-400 fw-bold my-5 my-lg-0 align-items-stretch"
-                                 id="kt_header_menu" data-kt-menu="true">
-                                <div class="menu-item me-lg-1">
-                                    <a class="menu-link py-3 @(path == "/" ? "active" : "")" href="/">
-                                        <span class="menu-title">Dashboard</span>
-                                    </a>
-                                </div>
-                                <div class="menu-item me-lg-1">
-                                    <a class="menu-link py-3 @(path.StartsWith("/manual") ? "active" : "")" href="/manual">
-                                        <span class="menu-title">Manuals</span>
-                                    </a>
-                                </div>
-                                @if (role == "ADMIN" || role == "SUPPORTER")
-                                {
-                                    <div class="menu-item menu-lg-down-accordion me-lg-1"
-                                         data-kt-menu-trigger="click" data-kt-menu-placement="bottom-start">
-                                        <span class="menu-link py-3 @(path.StartsWith("/admin") ? "active" : "")">
-                                            <span class="menu-title">Admin</span>
-                                            <span class="menu-arrow d-lg-none"></span>
-                                        </span>
-                                        <div class="menu-sub menu-sub-lg-down-accordion menu-sub-lg-dropdown px-lg-2 py-lg-4 w-lg-200px">
-                                            <div class="menu-item">
-                                                <a class="menu-link @(path.StartsWith("/admin/setting") ? "active" : "")" href="/admin/setting">
-                                                    <span class="menu-title">Settings</span>
-                                                </a>
-                                            </div>
-                                            <div class="menu-item">
-                                                <a class="menu-link @(path.StartsWith("/admin/code") ? "active" : "")" href="/admin/code">
-                                                    <span class="menu-title">Common Codes</span>
-                                                </a>
-                                            </div>
-                                            @if (role == "ADMIN")
-                                            {
-                                                <div class="menu-item">
-                                                    <a class="menu-link @(path.StartsWith("/admin/section-template") ? "active" : "")" href="/admin/section-template">
-                                                        <span class="menu-title">Section Templates</span>
-                                                    </a>
-                                                </div>
-                                                <div class="menu-item">
-                                                    <a class="menu-link @(path.StartsWith("/admin/user-role") ? "active" : "")" href="/admin/user-role">
-                                                        <span class="menu-title">User Roles</span>
-                                                    </a>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        </div>
+            <nav class="ex-nav">
+                <div class="ex-nav-label">Workspace</div>
 
-                        <div class="d-flex align-items-center ms-1 ms-lg-3">
-                            <div class="cursor-pointer symbol symbol-35px symbol-md-40px"
-                                 data-kt-menu-trigger="click" data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end">
-                                <img src="~/assets/media/avatars/user.png" alt="user" />
-                            </div>
-                            <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg menu-state-primary fw-bold py-4 fs-6 w-275px" data-kt-menu="true">
-                                <div class="menu-item px-3">
-                                    <div class="menu-content d-flex align-items-center px-3">
-                                        <div class="symbol symbol-50px me-5">
-                                            <img alt="user" src="~/assets/media/avatars/user.png" />
-                                        </div>
-                                        <div class="d-flex flex-column">
-                                            <div class="fw-bolder fs-5">@userName</div>
-                                            <div class="text-muted fs-7">@userId</div>
-                                            <div class="text-muted fs-7">@division @team</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="separator my-2"></div>
-                                <div class="menu-item px-5">
-                                    <a href="/auth/logout" class="menu-link px-5">Sign out</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <a class="ex-nav-item @(path == "/" ? "active" : "")" href="/">
+                    <svg class="ex-nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2.5" y="2.5" width="6" height="6" rx="1.5" />
+                        <rect x="11.5" y="2.5" width="6" height="6" rx="1.5" />
+                        <rect x="2.5" y="11.5" width="6" height="6" rx="1.5" />
+                        <rect x="11.5" y="11.5" width="6" height="6" rx="1.5" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
 
-                <div class="content d-flex flex-column flex-column-fluid pt-8">
-                    @RenderBody()
-                </div>
+                <a class="ex-nav-item @(path.StartsWith("/manual") || path.StartsWith("/editor") ? "active" : "")" href="/manual">
+                    <svg class="ex-nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 3.5h6.5A2.5 2.5 0 0 1 13 6v10.5a2 2 0 0 0-2-2H4z" />
+                        <path d="M16 3.5h-1.5A2.5 2.5 0 0 0 12 6v10.5a2 2 0 0 1 2-2h2z" />
+                    </svg>
+                    <span>Manuals</span>
+                </a>
 
-                <div class="footer py-4">
-                    <div class="container-fluid d-flex flex-column flex-md-row align-items-center justify-content-between">
-                        <div class="text-dark">
-                            <span class="text-muted fw-bold me-1">&copy; @DateTime.Now.Year</span>
-                            <span class="text-gray-800">Exodus Advanced Communications</span>
-                        </div>
-                    </div>
-                </div>
+                @if (isAdminArea)
+                {
+                    <div class="ex-nav-label">Administration</div>
 
+                    <a class="ex-nav-item @(path.StartsWith("/admin/setting") ? "active" : "")" href="/admin/setting">
+                        <svg class="ex-nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="10" cy="10" r="2.6" />
+                            <path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1L4.7 4.7" />
+                        </svg>
+                        <span>Settings</span>
+                    </a>
+
+                    <a class="ex-nav-item @(path.StartsWith("/admin/code") ? "active" : "")" href="/admin/code">
+                        <svg class="ex-nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M7 6.5L3.5 10 7 13.5M13 6.5L16.5 10 13 13.5M11.2 4l-2.4 12" />
+                        </svg>
+                        <span>Common Codes</span>
+                    </a>
+
+                    @if (role == "ADMIN")
+                    {
+                        <a class="ex-nav-item @(path.StartsWith("/admin/section-template") ? "active" : "")" href="/admin/section-template">
+                            <svg class="ex-nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2.5" y="3" width="15" height="14" rx="2" />
+                                <path d="M2.5 7.5h15M7.5 7.5v9.5" />
+                            </svg>
+                            <span>Section Templates</span>
+                        </a>
+
+                        <a class="ex-nav-item @(path.StartsWith("/admin/user-role") ? "active" : "")" href="/admin/user-role">
+                            <svg class="ex-nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="8" cy="7" r="2.8" />
+                                <path d="M2.8 16.5c0-2.7 2.3-4.4 5.2-4.4s5.2 1.7 5.2 4.4" />
+                                <path d="M14.5 6.5h3.2M16.1 4.9v3.2" />
+                            </svg>
+                            <span>User Roles</span>
+                        </a>
+                    }
+                }
+            </nav>
+
+            <div class="ex-sidebar-foot">
+                Exodus Advanced Communications
             </div>
+        </aside>
+
+        <div class="ex-body">
+            <header class="ex-topbar">
+                <button type="button" class="ex-burger" id="exBurger" aria-label="메뉴 열기">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                        <path d="M3 5.5h14M3 10h14M3 14.5h14" />
+                    </svg>
+                </button>
+
+                <h1 class="ex-topbar-title">@ViewData["Title"]</h1>
+
+                <div class="ex-topbar-spacer"></div>
+
+                <div class="ex-user-wrap">
+                    <div class="ex-user" data-kt-menu-trigger="click" data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end">
+                        <span class="ex-avatar">@initials</span>
+                        <span class="ex-user-meta d-none d-sm-block">
+                            <span class="ex-user-name d-block">@userName</span>
+                            <span class="ex-user-role">@role</span>
+                        </span>
+                    </div>
+                    <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg menu-state-primary fw-bold py-4 fs-6 w-250px" data-kt-menu="true">
+                        <div class="menu-item px-3">
+                            <div class="menu-content d-flex align-items-center px-3">
+                                <span class="ex-avatar me-4">@initials</span>
+                                <div class="d-flex flex-column">
+                                    <div class="fw-bold fs-6 text-gray-900">@userName</div>
+                                    <div class="text-muted fs-8">@userId</div>
+                                    <div class="text-muted fs-8">@division @team</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="separator my-3"></div>
+                        <div class="menu-item px-5">
+                            <a href="/auth/logout" class="menu-link px-5">Sign out</a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="ex-main">
+                @RenderBody()
+            </main>
+
+            <footer class="ex-footer">
+                &copy; @DateTime.Now.Year Exodus Advanced Communications. All rights reserved.
+            </footer>
         </div>
     </div>
 
@@ -143,6 +170,7 @@
     <script src="~/assets/js/common/constants.js"></script>
     <script src="~/assets/js/common/jsUtils.js"></script>
     <script src="~/js/common/ajaxSetting.js" asp-append-version="true"></script>
+    <script src="~/js/common/shell.js" asp-append-version="true"></script>
     @await RenderSectionAsync("scripts", required: false)
 </body>
 </html>

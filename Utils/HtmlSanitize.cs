@@ -17,7 +17,8 @@ public class HtmlSanitize
             "p", "br", "span", "div", "strong", "b", "em", "i", "u", "s", "sub", "sup",
             "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "pre", "code",
             "ul", "ol", "li", "hr", "figure", "figcaption",
-            "table", "thead", "tbody", "tfoot", "tr", "th", "td", "a", "img",
+            // colgroup/col 은 CKEditor 가 표의 열 너비를 저장하는 곳이다.
+            "table", "colgroup", "col", "caption", "thead", "tbody", "tfoot", "tr", "th", "td", "a", "img",
         })
             _sanitizer.AllowedTags.Add(tag);
 
@@ -25,16 +26,24 @@ public class HtmlSanitize
         foreach (var attr in new[]
         {
             "href", "title", "target", "rel", "src", "alt", "width", "height",
-            "colspan", "rowspan", "class", "style",
+            "colspan", "rowspan", "span", "class", "style",
         })
             _sanitizer.AllowedAttributes.Add(attr);
 
         _sanitizer.AllowedCssProperties.Clear();
         foreach (var css in new[]
         {
-            "color", "background-color", "font-size", "font-weight", "font-style",
+            "color", "background-color", "background", "font-size", "font-weight", "font-style",
             "text-align", "text-decoration", "line-height", "width", "height",
-            "border", "border-color", "padding", "margin",
+            "min-width", "max-width", "vertical-align", "float",
+            "border", "border-color", "border-style", "border-width", "border-collapse", "border-spacing",
+            "border-top", "border-right", "border-bottom", "border-left",
+            "border-top-color", "border-top-style", "border-top-width",
+            "border-right-color", "border-right-style", "border-right-width",
+            "border-bottom-color", "border-bottom-style", "border-bottom-width",
+            "border-left-color", "border-left-style", "border-left-width",
+            "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
+            "margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
         })
             _sanitizer.AllowedCssProperties.Add(css);
 

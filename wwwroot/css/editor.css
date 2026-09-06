@@ -1,6 +1,6 @@
 :root {
     --doc-font: Arial, Helvetica, sans-serif;
-    --doc-line-height: 1;
+    --doc-line-height: 1.2;
     --doc-letter-spacing: 0px;
 }
 
@@ -81,11 +81,22 @@
 
 .block-body { padding: .75rem 1rem 1rem; }
 
+.ck-host-wrap { position: relative; }
+.ck-loading {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    min-height: 360px;
+    color: #7e8299;
+    background: #fff;
+}
+
 /* 편집기 전체를 하나의 입력 상자로 묶는다 */
 .block-body .ck.ck-editor {
     border: 1px solid #d8dae5;
     border-radius: .5rem;
-    overflow: hidden;
     transition: border-color .15s, box-shadow .15s;
 }
 
@@ -145,15 +156,42 @@
 
 /* CKEditor 는 표를 figure.table 로 감싸서 Metronic 의 .table 규칙이 셀 테두리를 지운다 */
 .block-body .ck-content figure.table > table {
-    border: 1px solid #b3b3b3 !important;
+    border: 1px solid #8f96a3 !important;
     border-collapse: collapse;
 }
 
-.block-body .ck-content figure.table > table td,
-.block-body .ck-content figure.table > table th {
-    border: 1px solid #bfbfbf !important;
+.block-body .ck-content figure.table > table td:not([style*="border"]),
+.block-body .ck-content figure.table > table th:not([style*="border"]) {
+    border: 1px solid #9fa6b2 !important;
     padding: .4em !important;
     box-shadow: none !important;
+}
+
+/* 표 속성의 테두리 없음/0px 설정은 셀 테두리에도 적용한다. */
+.block-body .ck-content figure.table > table[style*="border-style: none"] td,
+.block-body .ck-content figure.table > table[style*="border-style:none"] td,
+.block-body .ck-content figure.table > table[style*="border-style: none"] th,
+.block-body .ck-content figure.table > table[style*="border-style:none"] th,
+.block-body .ck-content figure.table > table[style*="border-width: 0"] td,
+.block-body .ck-content figure.table > table[style*="border-width:0"] td,
+.block-body .ck-content figure.table > table[style*="border-width: 0"] th,
+.block-body .ck-content figure.table > table[style*="border-width:0"] th {
+    border: none !important;
+}
+
+.block-body .ck-content figure.table > table[style*="border-color"] td:not([style*="border"]),
+.block-body .ck-content figure.table > table[style*="border-color"] th:not([style*="border"]) {
+    border-color: inherit !important;
+}
+
+.block-body .ck-content figure.table > table[style*="border-width"] td:not([style*="border"]),
+.block-body .ck-content figure.table > table[style*="border-width"] th:not([style*="border"]) {
+    border-width: inherit !important;
+}
+
+.block-body .ck-content figure.table > table[style*="border-style"] td:not([style*="border"]),
+.block-body .ck-content figure.table > table[style*="border-style"] th:not([style*="border"]) {
+    border-style: inherit !important;
 }
 
 .block-body .ck-content figure.table > table th {

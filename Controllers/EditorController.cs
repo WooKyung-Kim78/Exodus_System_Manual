@@ -68,6 +68,28 @@ public class EditorController : BaseController<EditorController>
 
     /* ================= 섹션(목차) ================= */
 
+    /// secId 를 주면 그 목차 한 건만, 없으면 목차 목록을 돌려준다.
+    [AjaxAuth]
+    [HttpGet("sections")]
+    [Produces("application/json")]
+    public IActionResult GetSections(string mid, long? secId)
+    {
+        var access = GetManualAccess(mid);
+        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
+        if (access.CAN_READ != "Y") return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+
+        var sections = _db.USP_S_SELECT_SECTION_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_SECTION_LIST {0}, {1}", mid, CurrentUserId!)
+            .AsEnumerable().ToList();
+
+        if (secId is null) return JsonOk(new { list = sections });
+
+        var section = sections.FirstOrDefault(s => s.SEC_ID == secId);
+        if (section is null) return JsonFail(StatusCodes.Status404NotFound, "목차를 찾을 수 없습니다.");
+
+        return JsonOk(new { section });
+    }
+
     [AjaxAuth]
     [HttpPost("section")]
     [ValidateAntiForgeryToken]
@@ -80,7 +102,7 @@ public class EditorController : BaseController<EditorController>
         if (denied is not null) return denied;
 
         var result = _db.ResultModel
-            .FromSqlRaw("EXECUTE dbo.USP_S_MERGE_SECTION {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}",
+            .FromSqlRaw("EXECUTE dbo.USP_S_MERGE_SECTION {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}",
                 (object?)input.SEC_ID ?? DBNull.Value,
                 input.M_ID,
                 input.TITLE,
@@ -89,6 +111,7 @@ public class EditorController : BaseController<EditorController>
                 (object?)input.ASSIGNED_TEAM ?? DBNull.Value,
                 (object?)input.SEC_STATUS ?? DBNull.Value,
                 (object?)input.STYLE_JSON ?? DBNull.Value,
+                input.TITLE_ALIGN,
                 CurrentUserId!)
             .AsEnumerable().FirstOrDefault();
 
@@ -293,13 +316,16 @@ public class EditorController : BaseController<EditorController>
     [ValidateAntiForgeryToken]
     [Consumes("multipart/form-data")]
     [Produces("application/json")]
-    public async Task<IActionResult> UploadImage(string mid, IFormFile file)
+    public async Task<IActionResult> UploadImage(string mid, IFormFile? upload, IFormFile? file)
     {
         var denied = DenyIfNotEditable(mid);
         if (denied is not null) return denied;
 
+        var image = upload ?? file;
+        if (image is null) return JsonFail(StatusCodes.Status400BadRequest, "이미지 파일을 선택하세요.");
+
         var maxBytes = _config.GetValue<long>("APP:MAX_UPLOAD_BYTES", 20 * 1024 * 1024);
-        var result = await ImageUpload.SaveAsync(file, _env.ContentRootPath, mid, maxBytes);
+        var result = await ImageUpload.SaveAsync(image, _env.ContentRootPath, mid, maxBytes);
 
         if (!result.Success)
             return JsonFail(StatusCodes.Status400BadRequest, result.Message ?? "업로드에 실패했습니다.");
@@ -311,7 +337,7 @@ public class EditorController : BaseController<EditorController>
             FILE_NAME = result.FileName!,
             PATH = result.WebPath!,
             WEB_PATH = result.WebPath!,
-            CONTENT_TYPE = file.ContentType,
+            CONTENT_TYPE = image.ContentType,
             SIZE = result.Size,
             REG_ID = CurrentUserId!,
             REG_DT = DateTime.Now,

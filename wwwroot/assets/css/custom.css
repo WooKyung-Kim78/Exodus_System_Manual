@@ -434,9 +434,23 @@
 #app .ck-content {
     min-height: 42px;
 }
-.ck.ck-balloon-panel.ck-balloon-panel_position_border-side_right.ck-balloon-panel_visible {
-    display: none !important;
+
+/* CKEditor 팝업 레이어는 이 변수들로 정해진다. Bootstrap 모달(1055)보다 위로 올린다. */
+:root {
+    --ck-z-default: 1060;
+    --ck-z-panel: 1070;
+    --ck-z-modal: 1070;
 }
+
+body > .ck-body-wrapper {
+    z-index: 1070 !important;
+}
+
+.ck.ck-balloon-panel,
+.ck.ck-dropdown__panel {
+    z-index: 1070 !important;
+}
+
 .cursor-move {
     cursor: move;
 }

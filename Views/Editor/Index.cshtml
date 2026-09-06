@@ -39,8 +39,8 @@
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <span class="fw-bold fs-8 text-muted text-uppercase">목차</span>
                     <div class="d-flex gap-1">
-                        <button class="btn btn-sm btn-light py-1 px-2" :disabled="!canEdit" @@click="openTemplate">템플릿</button>
-                        <button class="btn btn-sm btn-light-primary py-1 px-2" :disabled="!canEdit" @@click="openSection(null)">+ 추가</button>
+                        <button class="btn btn-sm btn-light py-1 px-2" :disabled="!canEdit" @@click="openTemplate">목차관리</button>
+                        <!-- <button class="btn btn-sm btn-light-primary py-1 px-2" :disabled="!canEdit" @@click="openSection(null)">+ 추가</button> -->
                     </div>
                 </div>
 
@@ -60,7 +60,7 @@
                 <div v-if="sections.length" class="border-top mt-3 pt-3 d-flex gap-1">
                     <button class="btn btn-sm btn-light flex-grow-1" :disabled="!canEditActive" @@click="moveSection(-1)">↑</button>
                     <button class="btn btn-sm btn-light flex-grow-1" :disabled="!canEditActive" @@click="moveSection(1)">↓</button>
-                    <button class="btn btn-sm btn-light flex-grow-1" :disabled="!canEditActive" @@click="openSection(activeSection)">✎</button>
+                    <button class="btn btn-sm btn-light flex-grow-1" :disabled="!canEditActive || secLoading" @@click="openSection(activeSection)">✎</button>
                     <button class="btn btn-sm btn-light-danger flex-grow-1" :disabled="!canEditActive" @@click="removeSection">×</button>
                 </div>
             </div>
@@ -90,6 +90,9 @@
                         <div class="d-flex gap-2">
                             <button class="btn btn-sm btn-light-primary" :disabled="!canEditActive" @@click="addBlock('TEXT')">+ 텍스트</button>
                             <button class="btn btn-sm btn-light-primary" :disabled="!canEditActive" @@click="pickImage">+ 이미지</button>
+                            <button class="btn btn-sm btn-primary" :disabled="!canEditActive || !dirtyCount" @@click="saveActiveBlocks">
+                                저장<span v-if="dirtyCount"> ({{ dirtyCount }})</span>
+                            </button>
                         </div>
                     </div>
 
@@ -106,6 +109,7 @@
                     <div v-for="(b, i) in activeBlocks" :key="b.ELE_ID" class="block-card">
                         <div class="block-toolbar">
                             <span class="text-muted fs-9">{{ b.ELE_TYPE === 'TEXT' ? '텍스트' : '이미지' }}</span>
+                            <span v-if="dirty[b.ELE_ID]" class="badge badge-light-warning fs-9 ms-2">저장 안 됨</span>
                             <div class="ms-auto d-flex gap-1">
                                 <button class="btn btn-sm btn-icon btn-light py-0 px-2" :disabled="!canEditActive || i === 0" @@click="moveBlock(i, -1)">↑</button>
                                 <button class="btn btn-sm btn-icon btn-light py-0 px-2" :disabled="!canEditActive || i === activeBlocks.length - 1" @@click="moveBlock(i, 1)">↓</button>
@@ -113,15 +117,20 @@
                             </div>
                         </div>
                         <div class="block-body">
-                            <div v-if="b.ELE_TYPE === 'TEXT'" :id="'ck-' + b.ELE_ID" class="ck-host"></div>
+                            <template v-if="b.ELE_TYPE === 'TEXT'">
+                                <div class="ck-host-wrap">
+                                    <div v-if="editorLoading[b.ELE_ID]" class="ck-loading">내용을 불러오는 중...</div>
+                                    <div :id="'ck-' + b.ELE_ID" class="ck-host"></div>
+                                </div>
+                            </template>
                             <template v-else>
                                 <img :src="b.IMAGE_PATH" class="image-block-preview" :style="{ maxWidth: (b.WIDTH || 100) + '%' }" />
                                 <input type="text" class="form-control form-control-sm mt-3" placeholder="캡션 (선택)"
-                                       v-model="b.CAPTION" :disabled="!canEditActive" @@change="saveBlock(b)" maxlength="500" />
+                                       v-model="b.CAPTION" :disabled="!canEditActive" @@change="markDirty(b)" maxlength="500" />
                                 <div class="d-flex align-items-center gap-2 mt-2">
                                     <span class="text-muted fs-9">너비</span>
                                     <input type="range" class="form-range" min="20" max="100" step="5"
-                                           v-model.number="b.WIDTH" :disabled="!canEditActive" @@change="saveBlock(b)" />
+                                           v-model.number="b.WIDTH" :disabled="!canEditActive" @@change="markDirty(b)" />
                                     <span class="text-muted fs-9" style="min-width:38px">{{ b.WIDTH || 100 }}%</span>
                                 </div>
                             </template>
@@ -157,6 +166,15 @@
                         <div class="mb-4">
                             <label class="form-label required">제목</label>
                             <input type="text" class="form-control" v-model.trim="secForm.TITLE" maxlength="200" />
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label required">제목 가로 정렬</label>
+                            <select class="form-select" v-model="secForm.TITLE_ALIGN">
+                                <option value="LEFT">왼쪽</option>
+                                <option value="CENTER">가운데</option>
+                                <option value="RIGHT">오른쪽</option>
+                            </select>
+                            <div class="form-text">아래 제목 스타일과 별개로 동작합니다. 개별 지정을 꺼도 그대로 유지됩니다.</div>
                         </div>
                         <div class="mb-4">
                             <label class="form-label">담당 팀</label>

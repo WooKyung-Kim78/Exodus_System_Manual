@@ -14,6 +14,11 @@ public class SectionTemplateItem
     public string IS_MANDATORY { get; set; } = "Y";
     public int ORDER_NUM { get; set; }
     public string? ASSIGNED_TEAM { get; set; }
+    public string? CONTENT_HTML { get; set; }
+
+    /// 제목 가로 정렬. LEFT / CENTER / RIGHT.
+    public string TITLE_ALIGN { get; set; } = "LEFT";
+
     public DateTime? REG_DT { get; set; }
     public DateTime? UPT_DT { get; set; }
 }
@@ -30,6 +35,7 @@ public class TemplateOptionItem
     public string IS_MANDATORY { get; set; } = "Y";
     public int ORDER_NUM { get; set; }
     public string? ASSIGNED_TEAM { get; set; }
+    public string TITLE_ALIGN { get; set; } = "LEFT";
 
     /// 이미 문서에 들어가 있는지 여부.
     public string IS_ADDED { get; set; } = "N";
@@ -60,6 +66,11 @@ public class InputSectionTemplate
 
     [StringLength(100)]
     public string? ASSIGNED_TEAM { get; set; }
+
+    public string? CONTENT_HTML { get; set; }
+
+    [RegularExpression("^(LEFT|CENTER|RIGHT)$", ErrorMessage = "가로 정렬 값이 올바르지 않습니다.")]
+    public string TITLE_ALIGN { get; set; } = "LEFT";
 
     public int? ORDER_NUM { get; set; }
 }

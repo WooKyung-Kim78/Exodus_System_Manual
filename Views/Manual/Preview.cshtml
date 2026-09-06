@@ -83,7 +83,7 @@
                 }
 
                 <div class="doc-section">
-                    <div class="doc-section-title avoid-break" style="@style.ToCss()">
+                    <div class="doc-section-title avoid-break" style="@style.ToCss()text-align:@TitleAligns.CssOf(s.TITLE_ALIGN);">
                         @if (!string.IsNullOrWhiteSpace(s.SEC_NO))
                         {
                             <span class="sec-no">@s.SEC_NO</span>

@@ -32,6 +32,19 @@ public class HeadingStyleOverride
     };
 }
 
+/// 제목 가로 정렬. 크기·색·굵기·밑줄과 달리 목차마다 직접 가지는 값이다.
+public static class TitleAligns
+{
+    public const string Default = "LEFT";
+
+    public static string CssOf(string? code) => (code ?? Default).ToUpperInvariant() switch
+    {
+        "CENTER" => "center",
+        "RIGHT" => "right",
+        _ => "left",
+    };
+}
+
 /// 본문 글꼴은 문서 전체가 하나로 통일된다.
 public static class BodyFonts
 {
@@ -67,7 +80,7 @@ public class PreviewViewModel
     public int ContentWidthMm => Header.PAGE_SIZE == "A4" ? 170 : 176;
     public string BodyFontStack => BodyFonts.StackOf(Header.BODY_FONT);
     public int BodyFontSize => 12;
-    public decimal BodyLineHeight => Header.BODY_LINE_HEIGHT ?? 1.0m;
+    public decimal BodyLineHeight => Header.BODY_LINE_HEIGHT ?? 1.2m;
     public decimal BodyLetterSpacing => Header.BODY_LETTER_SPACING ?? 0m;
     public string FileName
     {

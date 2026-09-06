@@ -8,6 +8,10 @@ import {
     FontBackgroundColor,
     FontColor,
     Heading,
+    ImageBlock,
+    ImageInsert,
+    ImageToolbar,
+    ImageUpload,
     Indent,
     IndentBlock,
     Italic,
@@ -18,6 +22,7 @@ import {
     Strikethrough,
     Subscript,
     Superscript,
+    SimpleUploadAdapter,
     Table,
     TableCaption,
     TableCellProperties,
@@ -34,14 +39,17 @@ const TOOLBAR = [
     'fontColor', 'fontBackgroundColor', '|',
     'bold', 'italic', 'underline', 'strikethrough', 'subscript', 'superscript', 'removeFormat', '|',
     'alignment', 'bulletedList', 'numberedList', 'outdent', 'indent', '|',
-    'insertTable', 'link', 'blockQuote',
+    'insertTable', 'tableProperties', 'tableCellProperties', '|',
+    'uploadImage', 'link', 'blockQuote',
 ];
 
 const PLUGINS = [
     Alignment, Autoformat, BlockQuote, Bold, Essentials,
     FontBackgroundColor, FontColor, Heading,
+    ImageBlock, ImageInsert, ImageToolbar, ImageUpload,
     Indent, IndentBlock, Italic, Link, List, Paragraph, RemoveFormat,
     Strikethrough, Subscript, Superscript,
+    SimpleUploadAdapter,
     Table, TableCaption, TableCellProperties, TableColumnResize, TableProperties, TableToolbar,
     TextTransformation, Underline,
 ];
@@ -56,11 +64,15 @@ window.createBlockEditor = async function (element, initialHtml, options) {
     const editor = await ClassicEditor.create(element, {
         licenseKey: 'GPL',
         plugins: PLUGINS,
-        toolbar: { items: TOOLBAR, shouldNotGroupWhenFull: false },
+        toolbar: { items: TOOLBAR, shouldNotGroupWhenFull: true },
         table: {
             contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells', 'tableProperties', 'tableCellProperties'],
         },
         link: { addTargetToExternalLinks: true },
+        simpleUpload: opts.uploadUrl ? {
+            uploadUrl: opts.uploadUrl,
+            headers: opts.uploadHeaders || {},
+        } : undefined,
     });
 
     editor.setData(initialHtml || '');

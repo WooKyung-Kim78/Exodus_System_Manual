@@ -17,6 +17,9 @@ public class SectionItem
     /// NULL 이면 문서 공통 스타일을 따른다.
     public string? STYLE_JSON { get; set; }
 
+    /// 가로 정렬은 STYLE_JSON 과 별개로 항상 목차가 직접 가진다.
+    public string TITLE_ALIGN { get; set; } = "LEFT";
+
     /// 템플릿에서 온 목차면 원본 TPL_ID.
     public long? TPL_ID { get; set; }
 
@@ -60,4 +63,7 @@ public class InputSection
 
     [StringLength(2000, ErrorMessage = "제목 스타일 값이 너무 깁니다.")]
     public string? STYLE_JSON { get; set; }
+
+    [RegularExpression("^(LEFT|CENTER|RIGHT)$", ErrorMessage = "가로 정렬 값이 올바르지 않습니다.")]
+    public string TITLE_ALIGN { get; set; } = "LEFT";
 }

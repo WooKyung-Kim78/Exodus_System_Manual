@@ -104,13 +104,13 @@
                     <div class="card-header align-items-center">
                         <h3 class="card-title">목차 <span class="text-muted fs-7 ms-2">{{ sections.length }}개</span></h3>
                         <div class="card-toolbar gap-2">
-                            <button class="btn btn-sm btn-light" :disabled="!canEdit" @@click="openTemplate">템플릿</button>
-                            <button class="btn btn-sm btn-primary" :disabled="!canEdit" @@click="openSection(null)">+ 목차 추가</button>
+                            <button class="btn btn-sm btn-light" :disabled="!canEdit" @@click="openTemplate">목차관리</button>
+                            <!-- <button class="btn btn-sm btn-primary" :disabled="!canEdit" @@click="openSection(null)">+ 목차 추가</button> -->
                         </div>
                     </div>
                     <div class="card-body">
                         <div v-if="!sections.length" class="text-center text-muted py-10">
-                            목차가 없습니다. 템플릿에서 가져오거나 직접 추가하세요.
+                            <!-- 목차가 없습니다. 템플릿에서 가져오거나 직접 추가하세요. -->
                         </div>
                         <table v-else class="table table-row-bordered align-middle gy-2">
                             <thead>
@@ -149,7 +149,7 @@
                                         <button class="btn btn-sm btn-light py-1 px-2"
                                                 :disabled="!canEditSection(s) || isLast(s)" @@click="moveSection(s, 1)">↓</button>
                                         <button class="btn btn-sm btn-light py-1 px-2 ms-2"
-                                                :disabled="!canEditSection(s)" @@click="openSection(s)">수정</button>
+                                                :disabled="!canEditSection(s) || secLoading" @@click="openSection(s)">수정</button>
                                         <button class="btn btn-sm btn-light-danger py-1 px-2"
                                                 :disabled="!canEditSection(s)" @@click="removeSection(s)">삭제</button>
                                         <a class="btn btn-sm btn-light-primary py-1 px-2 ms-2"
@@ -282,6 +282,15 @@
                         <div class="mb-4">
                             <label class="form-label required">제목</label>
                             <input type="text" class="form-control" v-model.trim="secForm.TITLE" maxlength="200" />
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label required">제목 가로 정렬</label>
+                            <select class="form-select" v-model="secForm.TITLE_ALIGN">
+                                <option value="LEFT">왼쪽</option>
+                                <option value="CENTER">가운데</option>
+                                <option value="RIGHT">오른쪽</option>
+                            </select>
+                            <div class="form-text">문서 제목 스타일과 별개로 동작합니다.</div>
                         </div>
                         <div>
                             <label class="form-label">담당 팀</label>

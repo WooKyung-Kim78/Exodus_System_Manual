@@ -57,15 +57,15 @@ new Vue({
         teams: [],
         secForm: {},
         secError: '',
+        secLoading: false,
         savingSection: false,
         templateOptions: [],
         templateLoading: false,
         addingTpl: null,
         headingStyle: JSON.parse(JSON.stringify(DEFAULT_HEADING_STYLE)),
         bodyFont: 'ARIAL',
-        bodyLineHeight: 1,
+        bodyLineHeight: 1.2,
         bodyLetterSpacing: 0,
-        modals: {},
         notifyMemo: '',
         notifyOnlyAssigned: false,
         notifyTargetsAll: [],
@@ -96,14 +96,12 @@ new Vue({
         this.callTeams();
     },
     methods: {
-        // 모달 마크업이 v-if 안에 있어 mounted 시점에는 없다. 열 때 만들고 캐시한다.
+        // 모달 마크업이 v-if 안에 있어 데이터를 다시 불러올 때마다 DOM 이 새로 만들어진다.
+        // 인스턴스를 캐시하면 떨어져 나간 예전 요소가 열려 직전 내용이 그대로 보인다.
         modal: function (id) {
-            if (!this.modals[id]) {
-                var el = document.getElementById(id);
-                if (!el) return null;
-                this.modals[id] = new bootstrap.Modal(el);
-            }
-            return this.modals[id];
+            var el = document.getElementById(id);
+            if (!el) return null;
+            return bootstrap.Modal.getOrCreateInstance(el);
         },
         callData: function () {
             var self = this;
@@ -119,7 +117,7 @@ new Vue({
                         catch (e) { /* 저장된 값이 깨졌으면 기본값을 쓴다 */ }
                     }
                     self.bodyFont = self.header.BODY_FONT || 'ARIAL';
-                    self.bodyLineHeight = Number(self.header.BODY_LINE_HEIGHT) || 1;
+                    self.bodyLineHeight = Number(self.header.BODY_LINE_HEIGHT) || 1.2;
                     self.bodyLetterSpacing = Number(self.header.BODY_LETTER_SPACING) || 0;
                 })
                 .fail(function (xhr) { toastError(getErrorMessage(xhr)); })
@@ -189,13 +187,39 @@ new Vue({
         },
         isFirst: function (s) { return this.sections.indexOf(s) === 0; },
         isLast: function (s) { return this.sections.indexOf(s) === this.sections.length - 1; },
-        openSection: function (s) {
-            this.secError = '';
+        // 목차만 다시 읽는다. 전체 재조회와 달리 화면이 통째로 다시 그려지지 않는다.
+        callSections: function () {
+            var self = this;
+            return $.get('/editor/sections', { mid: self.mid })
+                .done(function (res) { self.sections = res.data.list; })
+                .fail(function (xhr) { toastError(getErrorMessage(xhr)); });
+        },
+        setSecForm: function (s) {
             this.secForm = s
                 ? { SEC_ID: s.SEC_ID, TITLE: s.TITLE, SEC_LEVEL: s.SEC_LEVEL,
-                    SEC_NO: s.SEC_NO, ASSIGNED_TEAM: s.ASSIGNED_TEAM, STYLE_JSON: s.STYLE_JSON }
-                : { SEC_ID: null, TITLE: '', SEC_LEVEL: 1, SEC_NO: '', ASSIGNED_TEAM: null };
-            this.modal('sectionModal').show();
+                    SEC_NO: s.SEC_NO, ASSIGNED_TEAM: s.ASSIGNED_TEAM, STYLE_JSON: s.STYLE_JSON,
+                    TITLE_ALIGN: s.TITLE_ALIGN || 'LEFT' }
+                : { SEC_ID: null, TITLE: '', SEC_LEVEL: 1, SEC_NO: '', ASSIGNED_TEAM: null, TITLE_ALIGN: 'LEFT' };
+        },
+        openSection: function (s) {
+            var self = this;
+            self.secError = '';
+
+            if (!s) {
+                self.setSecForm(null);
+                self.modal('sectionModal').show();
+                return;
+            }
+
+            // 목록이 오래됐을 수 있으니 편집 대상은 DB 에서 다시 읽어 온다.
+            self.secLoading = true;
+            $.get('/editor/sections', { mid: self.mid, secId: s.SEC_ID })
+                .done(function (res) {
+                    self.setSecForm(res.data.section);
+                    self.modal('sectionModal').show();
+                })
+                .fail(function (xhr) { toastError(getErrorMessage(xhr)); })
+                .always(function () { self.secLoading = false; });
         },
         saveSection: function () {
             var self = this;
@@ -206,7 +230,7 @@ new Vue({
             $.post('/editor/section', $.extend({ M_ID: self.mid }, self.secForm))
                 .done(function () {
                     self.modal('sectionModal').hide();
-                    self.callData();
+                    self.callSections();
                     toastOk('목차를 저장했습니다.');
                 })
                 .fail(function (xhr) { self.secError = getErrorMessage(xhr); })
@@ -217,7 +241,7 @@ new Vue({
             if (!confirm('"' + s.TITLE + '" 목차를 삭제합니다.\n안에 작성된 내용도 함께 삭제됩니다.')) return;
 
             $.ajax({ url: '/editor/section', method: 'DELETE', data: { secId: s.SEC_ID, mid: self.mid } })
-                .done(function () { self.callData(); toastOk('삭제했습니다.'); })
+                .done(function () { self.callSections(); toastOk('삭제했습니다.'); })
                 .fail(function (xhr) { toastError(getErrorMessage(xhr)); });
         },
         moveSection: function (s, delta) {
@@ -232,7 +256,7 @@ new Vue({
 
             var orders = arr.map(function (x, i) { return x.SEC_ID + ':' + (i + 1); }).join(',');
             $.post('/editor/section/order', { mid: self.mid, orders: orders })
-                .fail(function (xhr) { toastError(getErrorMessage(xhr)); self.callData(); });
+                .fail(function (xhr) { toastError(getErrorMessage(xhr)); self.callSections(); });
         },
         openTemplate: function () {
             var self = this;
@@ -249,7 +273,7 @@ new Vue({
             $.post('/editor/template-section', { mid: self.mid, tplId: t.TPL_ID })
                 .done(function () {
                     t.IS_ADDED = 'Y';
-                    self.callData();
+                    self.callSections();
                     toastOk('"' + t.TITLE + '" 목차를 추가했습니다.');
                 })
                 .fail(function (xhr) { toastError(getErrorMessage(xhr)); })

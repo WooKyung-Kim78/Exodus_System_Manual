@@ -1,29 +1,100 @@
 ﻿@{
     ViewData["Title"] = "Dashboard";
     var userName = Context.Session.GetString("FULL_NAME");
+    var role = Context.Session.GetString("ROLE");
+    var isAdmin = role == "ADMIN";
+    var isAdminArea = isAdmin || role == "SUPPORTER";
 }
 
 <div class="container-fluid">
-    <div class="d-flex align-items-center justify-content-between mb-6">
-        <h1 class="h3 mb-0">Dashboard</h1>
-        <a class="btn btn-primary" href="/manual">Manuals</a>
+    <div class="ex-page-head">
+        <div>
+            <h2 class="ex-page-title">안녕하세요, @userName 님</h2>
+            <p class="ex-page-desc">시스템 매뉴얼을 작성하고 검토한 뒤 표준 서식의 PDF 로 배포합니다.</p>
+        </div>
+        <a class="btn btn-primary" href="/manual">매뉴얼 목록 열기</a>
     </div>
 
-    <div class="alert alert-primary d-flex flex-column p-5 mb-6">
-        <span class="fw-bold">@userName 님, 반갑습니다.</span>
-        <span class="text-muted">Phase 1(기반·인증)까지 완료되었습니다. 매뉴얼 생성과 캔버스 편집기는 다음 단계에서 연결됩니다.</span>
+    <div class="ex-hero mb-6">
+        <div class="ex-hero-text">
+            <span class="ex-hero-eyebrow">Knowledge Base</span>
+            <h3 class="ex-hero-title">문서 구조는 템플릿으로, 내용은 담당 팀이</h3>
+            <p class="ex-hero-desc">
+                목차에 지정된 담당 팀만 해당 내용을 편집할 수 있습니다.
+                작성이 끝나면 미리보기에서 실제 인쇄 크기로 확인하고 PDF 로 내려받습니다.
+            </p>
+        </div>
     </div>
 
     <div class="row g-5">
-        @foreach (var card in new[] { ("작성중", "-"), ("결재 대기", "-"), ("발행 완료", "-"), ("미해결 코멘트", "-") })
+        <div class="col-12 col-md-6 col-xl-4">
+            <a class="card ex-tile" href="/manual">
+                <span class="ex-tile-icon">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 3.5h6.5A2.5 2.5 0 0 1 13 6v10.5a2 2 0 0 0-2-2H4z" />
+                        <path d="M16 3.5h-1.5A2.5 2.5 0 0 0 12 6v10.5a2 2 0 0 1 2-2h2z" />
+                    </svg>
+                </span>
+                <span class="ex-tile-title">매뉴얼</span>
+                <span class="ex-tile-desc">문서를 만들고 목차와 본문을 작성합니다.</span>
+            </a>
+        </div>
+
+        @if (isAdmin)
         {
-            <div class="col-6 col-lg-3">
-                <div class="card card-flush h-100">
-                    <div class="card-body">
-                        <div class="text-gray-500 fw-semibold">@card.Item1</div>
-                        <div class="fs-2hx fw-bold text-gray-800">@card.Item2</div>
-                    </div>
-                </div>
+            <div class="col-12 col-md-6 col-xl-4">
+                <a class="card ex-tile" href="/admin/section-template">
+                    <span class="ex-tile-icon">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2.5" y="3" width="15" height="14" rx="2" />
+                            <path d="M2.5 7.5h15M7.5 7.5v9.5" />
+                        </svg>
+                    </span>
+                    <span class="ex-tile-title">목차 템플릿</span>
+                    <span class="ex-tile-desc">Label · Cooling 조합별 표준 목차를 정의합니다.</span>
+                </a>
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-4">
+                <a class="card ex-tile" href="/admin/user-role">
+                    <span class="ex-tile-icon">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="8" cy="7" r="2.8" />
+                            <path d="M2.8 16.5c0-2.7 2.3-4.4 5.2-4.4s5.2 1.7 5.2 4.4" />
+                            <path d="M14.5 6.5h3.2M16.1 4.9v3.2" />
+                        </svg>
+                    </span>
+                    <span class="ex-tile-title">사용자 권한</span>
+                    <span class="ex-tile-desc">ADMIN · USER · READER 역할을 관리합니다.</span>
+                </a>
+            </div>
+        }
+
+        @if (isAdminArea)
+        {
+            <div class="col-12 col-md-6 col-xl-4">
+                <a class="card ex-tile" href="/admin/code">
+                    <span class="ex-tile-icon">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M7 6.5L3.5 10 7 13.5M13 6.5L16.5 10 13 13.5M11.2 4l-2.4 12" />
+                        </svg>
+                    </span>
+                    <span class="ex-tile-title">공통 코드</span>
+                    <span class="ex-tile-desc">표지 문구·로고 등 공통 설정 값을 관리합니다.</span>
+                </a>
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-4">
+                <a class="card ex-tile" href="/admin/setting">
+                    <span class="ex-tile-icon">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="10" cy="10" r="2.6" />
+                            <path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1L4.7 4.7" />
+                        </svg>
+                    </span>
+                    <span class="ex-tile-title">시스템 설정</span>
+                    <span class="ex-tile-desc">메일 발송(SMTP) 등 운영 설정을 다룹니다.</span>
+                </a>
             </div>
         }
     </div>

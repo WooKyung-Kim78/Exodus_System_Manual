@@ -30,6 +30,9 @@ var DEFAULT_HEADING_STYLE = {
     2: { size: 15, color: '#181c32', bold: true, underline: false },
     3: { size: 13, color: '#3f4254', bold: true, underline: false },
 };
+// 가로 정렬은 STYLE_JSON 과 별개 값이라 따로 다룬다.
+var ALIGN_CSS = { LEFT: 'left', CENTER: 'center', RIGHT: 'right' };
+function alignCss(a) { return ALIGN_CSS[a] || 'left'; }
 
 new Vue({
     el: '#app',
@@ -47,6 +50,7 @@ new Vue({
         secForm: {},
         secError: '',
         savingSection: false,
+        secLoading: false,
         secStyleOn: false,
         secStyle: { size: 18, color: '#181c32', bold: true, underline: false },
         templateOptions: [],
@@ -56,9 +60,11 @@ new Vue({
         historyLoading: false,
         headingStyle: JSON.parse(JSON.stringify(DEFAULT_HEADING_STYLE)),
         bodyFont: 'ARIAL',
-        bodyLineHeight: 1,
+        bodyLineHeight: 1.2,
         bodyLetterSpacing: 0,
         ckReady: typeof window.createBlockEditor === 'function',
+        editorLoading: {},
+        dirty: {},
     },
     computed: {
         canEdit: function () { return this.access && this.access.CAN_EDIT === 'Y'; },
@@ -68,7 +74,8 @@ new Vue({
         },
         secFormCss: function () {
             var base = this.headingStyle[this.secForm.SEC_LEVEL] || DEFAULT_HEADING_STYLE[1];
-            return this.toCss(this.secStyleOn ? this.secStyle : base);
+            return $.extend(this.toCss(this.secStyleOn ? this.secStyle : base),
+                            { textAlign: alignCss(this.secForm.TITLE_ALIGN) });
         },
         activeSection: function () {
             var self = this;
@@ -79,6 +86,14 @@ new Vue({
             return this.blocks
                 .filter(function (b) { return b.SEC_ID === self.activeSecId; })
                 .sort(function (a, b) { return a.ORDER_NUM - b.ORDER_NUM; });
+        },
+        dirtyCount: function () {
+            var self = this;
+            return this.activeBlocks.filter(function (b) { return self.dirty[b.ELE_ID]; }).length;
+        },
+        hasDirty: function () {
+            var self = this;
+            return Object.keys(this.dirty).some(function (id) { return self.dirty[id]; });
         },
     },
     watch: {
@@ -92,7 +107,6 @@ new Vue({
         // CKEditor 인스턴스는 객체 그래프가 커서 Vue 반응형으로 만들면 안 된다.
         // data 가 아닌 인스턴스 속성으로 두면 반응형 변환을 피할 수 있다.
         this._editors = {};
-        this._modals = {};
     },
     mounted: function () {
         var self = this;
@@ -104,15 +118,19 @@ new Vue({
         }
         self.callData();
         self.callTeams();
+        window.addEventListener('beforeunload', function (e) {
+            if (!self.hasDirty) return;
+            e.preventDefault();
+            e.returnValue = '';
+        });
     },
     methods: {
+        // 모달 마크업은 v-if 안에 있어 데이터를 다시 불러오면 DOM 이 새로 만들어진다.
+        // 인스턴스를 캐시하면 떨어져 나간 예전 요소가 열려 직전 내용이 보인다.
         modal: function (id) {
-            if (!this._modals[id]) {
-                var el = document.getElementById(id);
-                if (!el) return null;
-                this._modals[id] = new bootstrap.Modal(el);
-            }
-            return this._modals[id];
+            var el = document.getElementById(id);
+            if (!el) return null;
+            return bootstrap.Modal.getOrCreateInstance(el);
         },
 
         /* ---------- 데이터 ---------- */
@@ -123,6 +141,11 @@ new Vue({
                     self.header = res.data.header;
                     self.sections = res.data.sections;
                     self.blocks = res.data.blocks;
+                    self.editorLoading = {};
+                    self.dirty = {};
+                    self.blocks.forEach(function (block) {
+                        if (block.ELE_TYPE === 'TEXT') self.$set(self.editorLoading, block.ELE_ID, true);
+                    });
                     self.access = res.data.access;
 
                     if (self.header && self.header.HEADING_STYLE_JSON) {
@@ -131,7 +154,7 @@ new Vue({
                     }
                     if (self.header) {
                         self.bodyFont = self.header.BODY_FONT || 'ARIAL';
-                        self.bodyLineHeight = Number(self.header.BODY_LINE_HEIGHT) || 1;
+                        self.bodyLineHeight = Number(self.header.BODY_LINE_HEIGHT) || 1.2;
                         self.bodyLetterSpacing = Number(self.header.BODY_LETTER_SPACING) || 0;
                         self.applyBodyStyle();
                     }
@@ -159,17 +182,41 @@ new Vue({
             this.activeSecId = s.SEC_ID;
         },
         openSection: function (s) {
-            this.secError = '';
+            var self = this;
+            self.secError = '';
+
+            if (!s) {
+                self.setSecForm(null);
+                self.modal('sectionModal').show();
+                return;
+            }
+
+            // 목록이 오래됐을 수 있으니 편집 대상은 DB 에서 다시 읽어 온다.
+            self.secLoading = true;
+            $.get('/editor/sections', { mid: self.mid, secId: s.SEC_ID })
+                .done(function (res) {
+                    self.setSecForm(res.data.section);
+                    self.modal('sectionModal').show();
+                })
+                .fail(function (xhr) { toastError(getErrorMessage(xhr)); })
+                .always(function () { self.secLoading = false; });
+        },
+        setSecForm: function (s) {
             this.secForm = s
                 ? { SEC_ID: s.SEC_ID, TITLE: s.TITLE, SEC_LEVEL: s.SEC_LEVEL, SEC_NO: s.SEC_NO,
-                    ASSIGNED_TEAM: s.ASSIGNED_TEAM }
-                : { SEC_ID: null, TITLE: '', SEC_LEVEL: 1, SEC_NO: '', ASSIGNED_TEAM: null };
+                    ASSIGNED_TEAM: s.ASSIGNED_TEAM, TITLE_ALIGN: s.TITLE_ALIGN || 'LEFT' }
+                : { SEC_ID: null, TITLE: '', SEC_LEVEL: 1, SEC_NO: '', ASSIGNED_TEAM: null, TITLE_ALIGN: 'LEFT' };
 
             var own = s ? this.parseStyle(s.STYLE_JSON) : null;
             this.secStyleOn = !!own;
             this.secStyle = $.extend({}, this.levelStyle(this.secForm.SEC_LEVEL), own || {});
-
-            this.modal('sectionModal').show();
+        },
+        // 목차만 다시 읽는다. 전체 재조회와 달리 본문 편집기가 다시 만들어지지 않는다.
+        callSections: function () {
+            var self = this;
+            return $.get('/editor/sections', { mid: self.mid })
+                .done(function (res) { self.sections = res.data.list; })
+                .fail(function (xhr) { toastError(getErrorMessage(xhr)); });
         },
         loadCandidates: function (team) {
             var self = this;
@@ -188,7 +235,7 @@ new Vue({
                 .done(function (res) {
                     self.modal('sectionModal').hide();
                     var newId = Number(res.data.SEC_ID);
-                    self.callData();
+                    self.callSections();
                     if (!self.secForm.SEC_ID) self.activeSecId = newId;
                     toastOk('목차를 저장했습니다.');
                 })
@@ -242,6 +289,7 @@ new Vue({
         historyTarget: function (h) {
             if (h.FIELD_NAME === 'SECTION') return '목차';
             if (h.FIELD_NAME === 'TITLE') return '목차 제목';
+            if (h.FIELD_NAME === 'TITLE_ALIGN') return '목차 제목 정렬';
             if (h.FIELD_NAME === 'SECTION_ORDER') return '목차 순서';
             if (h.AFTER_VALUE === 'IMAGE') return '이미지 블록';
             if (h.AFTER_VALUE === 'TEXT') return '텍스트 블록';
@@ -344,6 +392,7 @@ new Vue({
             $.ajax({ url: '/editor/block', method: 'DELETE', data: { eleId: b.ELE_ID, mid: self.mid } })
                 .done(function () {
                     self.destroyEditor(b.ELE_ID);
+                    self.$delete(self.dirty, b.ELE_ID);
                     self.blocks = self.blocks.filter(function (x) { return x.ELE_ID !== b.ELE_ID; });
                     toastOk('삭제했습니다.');
                 })
@@ -353,22 +402,34 @@ new Vue({
             var self = this;
             self.saveState = '저장 중...';
 
-            $.post('/editor/block', {
+            // 동시 편집이 없어 ROW_VER 를 보내지 않는다. 마지막 저장이 그대로 반영된다.
+            return $.post('/editor/block', {
                 ELE_ID: b.ELE_ID, M_ID: self.mid, SEC_ID: b.SEC_ID, ELE_TYPE: b.ELE_TYPE,
                 ORDER_NUM: b.ORDER_NUM, WIDTH: b.WIDTH, HEIGHT: b.HEIGHT,
                 CONTENT_HTML: b.CONTENT_HTML, IMAGE_PATH: b.IMAGE_PATH,
-                CAPTION: b.CAPTION, STYLE_JSON: b.STYLE_JSON, ROW_VER: b.ROW_VER,
+                CAPTION: b.CAPTION, STYLE_JSON: b.STYLE_JSON,
             })
                 .done(function (res) {
                     if (res.data.block) b.ROW_VER = res.data.block.ROW_VER;
+                    self.$set(self.dirty, b.ELE_ID, false);
                     self.saveState = '저장됨';
                     setTimeout(function () { self.saveState = ''; }, 1500);
                 })
                 .fail(function (xhr) {
                     self.saveState = '저장 실패';
                     toastError(getErrorMessage(xhr));
-                    if (xhr.status === 409) self.callData();
                 });
+        },
+        markDirty: function (b) {
+            this.$set(this.dirty, b.ELE_ID, true);
+        },
+        saveActiveBlocks: function () {
+            var self = this;
+            var targets = self.activeBlocks.filter(function (b) { return self.dirty[b.ELE_ID]; });
+            if (!targets.length) return;
+
+            $.when.apply($, targets.map(function (b) { return self.saveBlock(b); }))
+                .done(function () { toastOk('본문을 저장했습니다.'); });
         },
 
         /* ---------- CKEditor 연결 ---------- */
@@ -383,17 +444,22 @@ new Vue({
                 if (!host) return;
 
                 self._editors[b.ELE_ID] = 'pending';
+                self.$set(self.editorLoading, b.ELE_ID, true);
                 window.createBlockEditor(host, b.CONTENT_HTML, {
                     readOnly: !self.canEditActive,
-                    onBlur: function (html) {
+                    uploadUrl: '/editor/image?mid=' + encodeURIComponent(self.mid),
+                    uploadHeaders: { RequestVerificationToken: self.token() },
+                    onChange: function (html) {
                         if (html === b.CONTENT_HTML) return;
                         b.CONTENT_HTML = html;
-                        self.saveBlock(b);
+                        self.markDirty(b);
                     },
                 }).then(function (editor) {
                     self._editors[b.ELE_ID] = editor;
+                    self.$set(self.editorLoading, b.ELE_ID, false);
                 }).catch(function (err) {
                     delete self._editors[b.ELE_ID];
+                    self.$set(self.editorLoading, b.ELE_ID, false);
                     console.error('CKEditor 초기화 실패', err);
                     toastError('편집기를 불러오지 못했습니다.');
                 });
@@ -403,6 +469,7 @@ new Vue({
             var ed = this._editors[id];
             if (ed && ed !== 'pending' && ed.destroy) ed.destroy();
             delete this._editors[id];
+            this.$delete(this.editorLoading, id);
         },
         destroyEditors: function () {
             var self = this;
@@ -446,7 +513,8 @@ new Vue({
         },
         // 공통 스타일 위에 목차가 가진 값만 덮어쓴다.
         sectionCss: function (s) {
-            return this.toCss($.extend({}, this.levelStyle(s.SEC_LEVEL), this.parseStyle(s.STYLE_JSON) || {}));
+            return $.extend(this.toCss($.extend({}, this.levelStyle(s.SEC_LEVEL), this.parseStyle(s.STYLE_JSON) || {})),
+                            { textAlign: alignCss(s.TITLE_ALIGN) });
         },
     },
 });
