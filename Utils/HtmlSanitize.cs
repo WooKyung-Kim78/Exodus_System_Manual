@@ -34,7 +34,7 @@ public class HtmlSanitize
         foreach (var css in new[]
         {
             "color", "background-color", "background", "font-size", "font-weight", "font-style",
-            "text-align", "text-decoration", "line-height", "width", "height",
+            "text-align", "text-decoration", "line-height", "width", "height", "aspect-ratio",
             "min-width", "max-width", "vertical-align", "float",
             "border", "border-color", "border-style", "border-width", "border-collapse", "border-spacing",
             "border-top", "border-right", "border-bottom", "border-left",

@@ -1,6 +1,8 @@
-/* 화면 미리보기 + html2pdf 캡처 대상 공통 스타일.
-   PDF 는 zoom/transform 이 걸린 DOM 을 제대로 못 그리므로 배율 없이 그대로 그린다. */
-
+/* 화면 미리보기와 서버 PDF(Views/Manual/Pdf.cshtml) 공통 스타일.
+   PDF 는 Chromium 이 print 미디어로 찍으므로 아래 @media print 가 적용된다. */
+/* 머리말·꼬리말 자리는 페이지마다 같아야 하므로 종이 여백으로 잡는다.
+   시트에 위·아래 padding 을 주면 첫 장과 끝 장에만 여백이 생긴다.
+   값은 ManualController.Pdf 의 Margin 과 반드시 같아야 한다. */
 .preview-toolbar {
     position: sticky;
     top: 0;
@@ -18,24 +20,38 @@
     padding: 2rem 0;
 }
 
+/* 페이지 보기: 서버 PDF 를 브라우저 PDF 뷰어로 띄운다. */
+.preview-pages {
+    display: block;
+    width: 100%;
+    height: calc(100vh - 4rem);
+    border: 0;
+    background: #525659;
+}
+
 .doc-sheet {
     margin: 0 auto;
     background: #fff;
     box-shadow: 0 2px 16px rgba(0, 0, 0, .1);
-    padding: 20mm;
-    font-family: var(--doc-font, Arial, Helvetica, sans-serif);
-    font-size: 12pt;
+    padding: 0 20mm;
+    font-family: var(--doc-font, Carlito, 'Malgun Gothic', sans-serif);
+    font-size: var(--doc-font-size, 12pt);
     line-height: var(--doc-line-height, 1.2);
     letter-spacing: var(--doc-letter-spacing, 0px);
     color: #181c32;
 }
 
-/* 글꼴·크기는 문서 전체 통일. 과거에 저장된 인라인 값이 있어도 덮어쓴다. */
+/* 글꼴·크기는 문서 전체 통일. 과거에 저장된 인라인 값이 있어도 덮어쓴다. (크기 기준값: doc-type.css) */
 .doc-block,
 .doc-block * {
-    font-family: var(--doc-font, Arial, Helvetica, sans-serif) !important;
-    font-size: 12pt !important;
+    font-family: var(--doc-font, Carlito, 'Malgun Gothic', sans-serif) !important;
+    font-size: var(--doc-font-size, 12pt) !important;
 }
+
+.doc-block table,
+.doc-block table * { font-size: var(--doc-size-table, 9.5pt) !important; }
+
+.doc-block .block-caption { font-size: var(--doc-size-small, 9pt) !important; }
 
 .doc-sheet.letter { width: 216mm; }
 .doc-sheet.a4 { width: 210mm; }
@@ -54,7 +70,7 @@
 }
 
 .doc-cover .cover-headline {
-    font-size: 14pt;
+    font-size: var(--doc-size-cover, 14pt);
     line-height: 2;
     margin-bottom: 20mm;
 }
@@ -68,30 +84,63 @@
 
 .doc-cover .cover-meta {
     margin-top: 20mm;
-    font-size: 9pt;
+    font-size: var(--doc-size-small, 9pt);
     color: #78829d;
 }
 
-/* 목차 */
+/* 목차 — 제목 … 점선 … 쪽 번호 */
 .doc-toc-title {
-    font-size: 16pt;
+    font-size: var(--doc-size-toc-title, 12pt);
     font-weight: 700;
-    margin-bottom: 6mm;
-    padding-bottom: 2mm;
-    border-bottom: 1px solid #d7d9e3;
+    text-decoration: underline;
+    margin-bottom: 3mm;
 }
 
 .toc-row {
     display: flex;
-    gap: .5rem;
+    align-items: flex-end;
+    gap: 1.5mm;
     padding: 1.2mm 0;
+    color: inherit;
+    text-decoration: none;
+    break-inside: avoid;
 }
 
-.toc-row.lv1 { font-weight: 700; }
-.toc-row.lv2 { padding-left: 8mm; }
-.toc-row.lv3 { padding-left: 16mm; color: #5e6278; }
+.toc-row:hover { color: inherit; }
+.toc-row.lv2 { padding-left: 4mm; }
+.toc-row.lv3 { padding-left: 8mm; }
 
-.toc-no { min-width: 16mm; color: #78829d; }
+.toc-no { flex: 0 0 auto; }
+.toc-text { flex: 0 1 auto; }
+
+.toc-leader {
+    flex: 1 1 auto;
+    min-width: 5mm;
+    border-bottom: 1.5px dotted #555;
+    margin-bottom: .3em;
+}
+
+/* 폭을 고정해 두어야 1차/2차 PDF 의 목차 줄바꿈이 같아 쪽 배치가 바뀌지 않는다. */
+.toc-page {
+    flex: 0 0 8mm;
+    text-align: right;
+}
+
+/* PDF 1차 생성용 쪽 번호 표식. 흐름에서 빠져 있어 배치에 영향이 없다. */
+.doc-section-title { position: relative; }
+
+.toc-mark,
+.doc-block .toc-mark,
+.doc-block .ds-spec-block .toc-mark {
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 2px !important;
+    line-height: 1;
+    letter-spacing: 0;
+    white-space: nowrap;
+    color: #fff;
+}
 
 /* 본문 */
 .doc-section { margin-bottom: 8mm; }
@@ -102,13 +151,13 @@
 
 .doc-block img {
     max-width: 100%;
+    height: auto;
     display: block;
     margin: 0 auto;
 }
 
 .doc-block .block-caption {
     text-align: center;
-    font-size: 9pt;
     color: #78829d;
     margin-top: 2mm;
 }
@@ -124,7 +173,6 @@
 .doc-block table th:not([style*="border"]) {
     border: 1px solid #9fa6b2 !important;
     padding: 1.5mm 2.5mm;
-    font-size: 9.5pt;
     vertical-align: top;
     box-shadow: none !important;
 }
@@ -161,8 +209,34 @@
     font-weight: 600;
 }
 
+/* 표 블록(표 편집기)은 편집 화면처럼 세로 가운데 정렬한다. */
+.doc-block.doc-block-table table td,
+.doc-block.doc-block-table table th {
+    vertical-align: middle !important;
+}
+
+/* figure.table 의 class 가 Bootstrap 의 .table 에 걸려 행·열 배경이 collapse 된
+   테두리를 덮는다. 맨 아래 행의 선이 지워지는 원인이다. */
+.doc-block table thead,
+.doc-block table tbody,
+.doc-block table tr,
+.doc-block table col {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
 .doc-block figure.table { margin: 0; }
-.doc-block figure.image { margin: 0; text-align: center; }
+.doc-block figure.image { margin: 0 auto; text-align: center; }
+
+/* CKEditor 이미지 정렬(왼쪽/가운데/오른쪽). 가운데는 클래스 없이 위 기본값을 따른다.
+   크기를 줄이면 figure 에 width 가 붙으므로 figure 와 img 둘 다 정렬한다. */
+.doc-block figure.image.image-style-block-align-left,
+.doc-block figure.image.image-style-block-align-left img { margin-left: 0; margin-right: auto; }
+.doc-block figure.image.image-style-block-align-right,
+.doc-block figure.image.image-style-block-align-right img { margin-left: auto; margin-right: 0; }
+
+.doc-block figure.image.image_resized { max-width: 100%; box-sizing: border-box; }
+.doc-block figure.image.image_resized img { width: 100%; }
 
 /* 문단 여백을 두면 줄바댈보다 문단 사이가 더 벌어져 행간이 제각각으로 보인다.
    간격은 line-height 하나로만 결정한다. */
@@ -178,12 +252,17 @@
 .doc-block ul,
 .doc-block ol { padding-left: 8mm; }
 
-/* html2pdf 페이지 분할 힌트 */
+/* 페이지 분할 힌트 */
 .page-break { page-break-before: always; break-before: page; }
 .avoid-break { page-break-inside: avoid; break-inside: avoid; }
 
 @media print {
-    .preview-toolbar { display: none; }
+    /* 위 20mm 는 빈 머리말, 아래 18mm 는 페이지 번호가 들어갈 꼬리말 자리. */
+    @page { margin: 20mm 20mm 18mm; }
+
+    .preview-toolbar,
+    .preview-pages { display: none !important; }
+    .preview-stage.d-none { display: block !important; }
     .preview-stage { background: #fff; padding: 0; }
-    .doc-sheet { box-shadow: none; margin: 0; }
+    .doc-sheet { box-shadow: none; margin: 0; width: auto; padding: 0; }
 }

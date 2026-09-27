@@ -1,0 +1,114 @@
+/* datasheet(exodus_datasheet Views/Workspace/Preview.cshtml) 의 사양표 모양. 크기 기준값은 doc-type.css 의 --ds-size-*.
+   datasheet 는 px 기준 화면을 0.8 배로 줄여 PDF 로 찍으므로 글자 크기는 px × 0.8 을 pt 로 옮겼다.
+   미리보기(.doc-block *)가 글꼴·크기를 !important 로 고정하므로 여기서도 더 구체적인 선택자와 !important 를 쓴다. */
+
+div.ds-spec-block {
+    color: #181c32;
+    line-height: 1.5;
+    letter-spacing: normal;
+    font-size: var(--ds-size-body, 8.4pt) !important;
+}
+
+.ds-spec-block *,
+.doc-block .ds-spec-block * {
+    font-family: Poppins, 'Malgun Gothic', Helvetica, sans-serif !important;
+    font-size: inherit !important;
+}
+
+.ds-spec-block sup,
+.ds-spec-block sub,
+.doc-block .ds-spec-block sup,
+.doc-block .ds-spec-block sub { font-size: 75% !important; }
+
+.ds-spec-block p { margin: 0; }
+
+/* category 사이만 조금 띄우고, 꼬리말은 표 바로 아래에 붙인다. (datasheet: row mb-2) */
+.ds-spec-block .ds-spec-group { margin-bottom: 3mm; }
+
+.ds-spec-block .ds-spec-cat {
+    position: relative;
+    display: flex;
+    align-items: center;
+    font-size: var(--ds-size-category, 8pt) !important;
+    break-after: avoid;
+}
+
+.ds-spec-block .ds-spec-cat-name { font-weight: 700; margin-right: .4rem; }
+.ds-spec-block .ds-spec-sep { margin-right: .4rem; font-size: var(--ds-size-note, 7.2pt) !important; }
+.ds-spec-block .ds-spec-head { margin-left: .4rem; font-size: var(--ds-size-note, 7.2pt) !important; }
+
+.ds-spec-block .ds-spec-foot { font-size: var(--ds-size-note, 7.2pt) !important; }
+
+/* 사양표 — 음영 없이 검은 선, 머리글은 주황 글자 */
+.ds-spec-block .ds-spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 !important;
+    break-inside: avoid;
+}
+
+.ds-spec-block .ds-spec-table tr { break-inside: avoid; }
+
+.ds-spec-block .ds-spec-table > thead > tr > th,
+.ds-spec-block .ds-spec-table > tbody > tr > td {
+    border: 1px solid #000 !important;
+    padding: 0 !important;
+    vertical-align: middle !important;
+    background: none !important;
+    box-shadow: none !important;
+}
+
+.ds-spec-block .ds-spec-table > thead {
+    font-size: var(--ds-size-thead, 8pt) !important;
+}
+
+.ds-spec-block .ds-spec-table > thead > tr > th {
+    color: #e36c08;
+    font-weight: 700;
+    text-align: center;
+}
+
+.ds-spec-block .ds-spec-table > tbody {
+    color: #000;
+    font-size: var(--ds-size-body, 8.4pt) !important;
+}
+
+.ds-spec-block .ds-spec-table .ds-cell { padding: .05rem .4rem; }
+.ds-spec-block .ds-spec-table .ds-center { text-align: center; }
+
+/* 셀 안의 표(CKEditor figure.table)는 바깥 선을 셀 선에 겹쳐 빈 공간 없이 채운다. */
+.ds-spec-block .ds-spec-table figure.table {
+    display: block;
+    width: 100%;
+    margin: 0 !important;
+}
+
+.ds-spec-block .ds-spec-table figure.table table {
+    width: 100% !important;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin: 0 !important;
+    border: none !important;
+}
+
+.ds-spec-block .ds-spec-table figure.table td:not([style*="border"]),
+.ds-spec-block .ds-spec-table figure.table th:not([style*="border"]) {
+    border: 1px solid #000 !important;
+}
+
+.ds-spec-block .ds-spec-table figure.table td,
+.ds-spec-block .ds-spec-table figure.table th {
+    padding: .05rem .4rem !important;
+    color: #000;
+    background: none !important;
+    vertical-align: middle !important;
+}
+
+.ds-spec-block .ds-spec-table figure.table tr:first-child > td,
+.ds-spec-block .ds-spec-table figure.table tr:first-child > th { border-top: none !important; }
+.ds-spec-block .ds-spec-table figure.table tr:last-child > td,
+.ds-spec-block .ds-spec-table figure.table tr:last-child > th { border-bottom: none !important; }
+.ds-spec-block .ds-spec-table figure.table tr > td:first-child,
+.ds-spec-block .ds-spec-table figure.table tr > th:first-child { border-left: none !important; }
+.ds-spec-block .ds-spec-table figure.table tr > td:last-child,
+.ds-spec-block .ds-spec-table figure.table tr > th:last-child { border-right: none !important; }

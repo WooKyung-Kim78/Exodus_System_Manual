@@ -27,8 +27,19 @@
     <link href="~/assets/css/style.bundle.css" rel="stylesheet" type="text/css" />
     <link href="~/assets/css/custom.css" rel="stylesheet" type="text/css" asp-append-version="true" />
     <link href="~/assets/plugins/custom/jquery-toast/jquery.toast.min.css" rel="stylesheet" type="text/css" />
+    <link href="~/css/fonts.css" rel="stylesheet" asp-append-version="true" />
+    <link href="~/css/doc-type.css" rel="stylesheet" asp-append-version="true" />
+    <link href="~/css/ds-spec.css" rel="stylesheet" asp-append-version="true" />
     <link href="~/css/app.css" rel="stylesheet" asp-append-version="true" />
     <link href="~/css/theme.css" rel="stylesheet" asp-append-version="true" />
+    <script>
+        // 사이드바가 펼쳐졌다 접히는 깜빡임을 막기 위해 본문 렌더링 전에 상태를 적용한다.
+        try {
+            if (localStorage.getItem('exSidebarCollapsed') === '1') {
+                document.documentElement.classList.add('ex-collapsed');
+            }
+        } catch (e) { /* 저장소 접근 불가 시 기본(펼침) 상태 */ }
+    </script>
     @await RenderSectionAsync("css", required: false)
 </head>
 <body id="kt_body">
@@ -93,13 +104,13 @@
                             <span>Section Templates</span>
                         </a>
 
-                        <a class="ex-nav-item @(path.StartsWith("/admin/user-role") ? "active" : "")" href="/admin/user-role">
+                        <a class="ex-nav-item @(path.StartsWith("/admin/user") ? "active" : "")" href="/admin/user">
                             <svg class="ex-nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="8" cy="7" r="2.8" />
                                 <path d="M2.8 16.5c0-2.7 2.3-4.4 5.2-4.4s5.2 1.7 5.2 4.4" />
                                 <path d="M14.5 6.5h3.2M16.1 4.9v3.2" />
                             </svg>
-                            <span>User Roles</span>
+                            <span>Users</span>
                         </a>
                     }
                 }
@@ -115,6 +126,14 @@
                 <button type="button" class="ex-burger" id="exBurger" aria-label="메뉴 열기">
                     <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
                         <path d="M3 5.5h14M3 10h14M3 14.5h14" />
+                    </svg>
+                </button>
+
+                <button type="button" class="ex-collapse" id="exCollapse" aria-label="메뉴 접기" aria-expanded="true" title="메뉴 접기">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2.5" y="3.5" width="15" height="13" rx="2" />
+                        <path d="M8 3.5v13" />
+                        <path d="M13.6 8.2L11.8 10l1.8 1.8" />
                     </svg>
                 </button>
 

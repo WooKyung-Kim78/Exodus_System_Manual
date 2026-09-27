@@ -177,7 +177,7 @@ public class AdminController : BaseController<AdminController>
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 
         var result = _db.ResultModel
-            .FromSqlRaw("EXECUTE dbo.USP_S_MERGE_SECTION_TEMPLATE {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}",
+            .FromSqlRaw("EXECUTE dbo.USP_S_MERGE_SECTION_TEMPLATE {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}",
                 (object?)input.TPL_ID ?? DBNull.Value,
                 string.IsNullOrWhiteSpace(input.LABEL) ? DBNull.Value : input.LABEL,
                 string.IsNullOrWhiteSpace(input.COOLING) ? DBNull.Value : input.COOLING,
@@ -189,6 +189,9 @@ public class AdminController : BaseController<AdminController>
                 string.IsNullOrWhiteSpace(input.ASSIGNED_TEAM) ? DBNull.Value : input.ASSIGNED_TEAM,
                 (object?)_sanitizer.Clean(input.CONTENT_HTML) ?? DBNull.Value,
                 input.TITLE_ALIGN,
+                input.SEC_TYPE,
+                input.SHOW_IN_TOC,
+                input.TITLE_UNDERLINE,
                 CurrentUserId!)
             .AsEnumerable().FirstOrDefault();
 
@@ -251,40 +254,142 @@ public class AdminController : BaseController<AdminController>
         return Ok(new { url = result.WebPath, success = true, data = new { path = result.WebPath } });
     }
 
-    /* ================= 사용자 역할 ================= */
+    /* ================= 사용자 관리 ================= */
 
     [Auth("ADMIN")]
-    [HttpGet("user-role")]
-    public IActionResult UserRole() => View();
+    [HttpGet("user")]
+    public IActionResult Users() => View();
 
     [AjaxAuth("ADMIN")]
-    [HttpGet("user-role/list")]
+    [HttpGet("user/list")]
     [Produces("application/json")]
-    public IActionResult GetUserRoles(string? keyword)
+    public IActionResult GetUsers(string? keyword, string? view)
     {
-        var list = _db.USP_S_SELECT_USER_ROLE_LIST
-            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_USER_ROLE_LIST {0}",
-                string.IsNullOrWhiteSpace(keyword) ? DBNull.Value : keyword)
+        var list = _db.USP_S_SELECT_USER_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_USER_LIST {0}, {1}, {2}",
+                string.IsNullOrWhiteSpace(keyword) ? DBNull.Value : keyword,
+                view == "DEL" ? "DEL" : "USE",
+                DBNull.Value)
             .AsEnumerable().ToList();
 
         return JsonOk(new { list });
     }
 
     [AjaxAuth("ADMIN")]
-    [HttpPost("user-role")]
+    [HttpPost("user")]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
-    public IActionResult MergeUserRole(InputUserRole input)
+    public IActionResult SaveUser(InputUserAccount input)
     {
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 
+        var exists = _db.TB_S_USER.Any(u => u.USER_ID == input.USER_ID && u.IS_DELETED == "N");
+
+        string? passwordHash = null;
+        if (!exists)
+        {
+            if (!PasswordHelper.IsStrongEnough(input.N_PASSWORD, out var message))
+                return JsonFail(StatusCodes.Status400BadRequest, message);
+
+            passwordHash = PasswordHelper.Hash(input.N_PASSWORD!);
+        }
+
         var result = _db.ResultModel
-            .FromSqlRaw("EXECUTE dbo.USP_S_MERGE_USER_ROLE {0}, {1}, {2}",
-                input.USER_ID, input.ROLE_NAME, CurrentUserId!)
+            .FromSqlRaw("EXECUTE dbo.USP_S_MERGE_USER {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}",
+                input.USER_ID,
+                input.FULL_NAME,
+                (object?)input.EMAIL ?? DBNull.Value,
+                (object?)input.DIVISION ?? DBNull.Value,
+                (object?)input.TEAM ?? DBNull.Value,
+                (object?)input.SUPERVISOR_USER_ID ?? DBNull.Value,
+                input.ROLE_NAME,
+                input.AUTHORIZED,
+                (object?)passwordHash ?? DBNull.Value,
+                CurrentUserId!)
             .AsEnumerable().FirstOrDefault();
 
         if (result is null || result.Success == 0)
-            return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "역할을 저장하지 못했습니다.");
+            return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "사용자를 저장하지 못했습니다.");
+
+        return JsonOk();
+    }
+
+    [AjaxAuth("ADMIN")]
+    [HttpPost("user/password")]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
+    public IActionResult ResetUserPassword(InputUserPassword input)
+    {
+        if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
+
+        if (!PasswordHelper.IsStrongEnough(input.N_PASSWORD, out var message))
+            return JsonFail(StatusCodes.Status400BadRequest, message);
+
+        var result = _db.ResultModel
+            .FromSqlRaw("EXECUTE dbo.USP_S_UPDATE_USER_PASSWORD {0}, {1}, {2}",
+                input.USER_ID, PasswordHelper.Hash(input.N_PASSWORD), CurrentUserId!)
+            .AsEnumerable().FirstOrDefault();
+
+        if (result is null || result.Success == 0)
+            return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "비밀번호를 변경하지 못했습니다.");
+
+        return JsonOk();
+    }
+
+    [AjaxAuth("ADMIN")]
+    [HttpPost("user/authorized")]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
+    public IActionResult UpdateUserAuthorized(string userId, string authorized)
+    {
+        if (string.IsNullOrWhiteSpace(userId) || authorized is not ("Y" or "S" or "N"))
+            return JsonFail(StatusCodes.Status400BadRequest, "요청 값이 올바르지 않습니다.");
+
+        var result = _db.ResultModel
+            .FromSqlRaw("EXECUTE dbo.USP_S_UPDATE_USER_AUTHORIZED {0}, {1}, {2}",
+                userId, authorized, CurrentUserId!)
+            .AsEnumerable().FirstOrDefault();
+
+        if (result is null || result.Success == 0)
+            return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "계정 상태를 바꾸지 못했습니다.");
+
+        return JsonOk();
+    }
+
+    [AjaxAuth("ADMIN")]
+    [HttpDelete("user")]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
+    public IActionResult DeleteUser(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return JsonFail(StatusCodes.Status400BadRequest, "요청 값이 올바르지 않습니다.");
+
+        var result = _db.ResultModel
+            .FromSqlRaw("EXECUTE dbo.USP_S_DELETE_USER {0}, {1}", userId, CurrentUserId!)
+            .AsEnumerable().FirstOrDefault();
+
+        if (result is null || result.Success == 0)
+            return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "사용자를 삭제하지 못했습니다.");
+
+        return JsonOk();
+    }
+
+    [AjaxAuth("ADMIN")]
+    [HttpPost("user/restore")]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
+    public IActionResult RestoreUser(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return JsonFail(StatusCodes.Status400BadRequest, "요청 값이 올바르지 않습니다.");
+
+        var result = _db.ResultModel
+            .FromSqlRaw("EXECUTE dbo.USP_S_RESTORE_USER {0}, {1}", userId, CurrentUserId!)
+            .AsEnumerable().FirstOrDefault();
+
+        if (result is null || result.Success == 0)
+            return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "사용자를 복구하지 못했습니다.");
 
         return JsonOk();
     }

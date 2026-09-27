@@ -92,17 +92,22 @@ a:hover {
     background: var(--ex-surface);
     border-right: 1px solid var(--ex-border);
     z-index: 105;
+    transition: width .18s ease;
 }
 
+/* 상단 헤더와 같은 선에서 끝나야 하므로 높이·테두리를 topbar 와 맞춘다. */
 .ex-brand {
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     gap: 10px;
     height: var(--ex-topbar-h);
+    min-height: var(--ex-topbar-h);
     padding: 0 20px;
-    border-bottom: 1px solid var(--ex-border-soft);
+    border-bottom: 1px solid var(--ex-border);
     text-decoration: none;
     flex: none;
+    overflow: hidden;
 }
 
 .ex-brand:hover {
@@ -218,13 +223,16 @@ a:hover {
     margin-left: var(--ex-sidebar-w);
     display: flex;
     flex-direction: column;
+    transition: margin-left .18s ease;
 }
 
 .ex-topbar {
+    box-sizing: border-box;
     position: sticky;
     top: 0;
     z-index: 100;
     height: var(--ex-topbar-h);
+    min-height: var(--ex-topbar-h);
     display: flex;
     align-items: center;
     gap: 16px;
@@ -317,7 +325,80 @@ a:hover {
     display: none;
 }
 
+.ex-collapse {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border: 1px solid var(--ex-border);
+    border-radius: var(--ex-radius-sm);
+    background: var(--ex-surface);
+    color: var(--ex-text-muted);
+    transition: color .12s ease, background-color .12s ease;
+}
+
+.ex-collapse:hover {
+    background: var(--ex-bg);
+    color: var(--ex-primary-dark);
+}
+
+/* ---------- 접힌 사이드바(아이콘만) ---------- */
+
+@media (min-width: 992px) {
+    html.ex-collapsed .ex-sidebar {
+        width: var(--ex-sidebar-w-sm);
+    }
+
+    html.ex-collapsed .ex-body {
+        margin-left: var(--ex-sidebar-w-sm);
+    }
+
+    html.ex-collapsed .ex-brand {
+        justify-content: center;
+        padding: 0 10px;
+    }
+
+    html.ex-collapsed .ex-brand-text,
+    html.ex-collapsed .ex-nav-item > span,
+    html.ex-collapsed .ex-sidebar-foot {
+        display: none;
+    }
+
+    html.ex-collapsed .ex-nav {
+        padding: 12px 10px 24px;
+    }
+
+    html.ex-collapsed .ex-nav-item {
+        justify-content: center;
+        gap: 0;
+        padding: 10px 0;
+    }
+
+    /* 그룹 제목은 자리를 차지할 수 없으니 구분선으로 대체한다. */
+    html.ex-collapsed .ex-nav-label {
+        height: 0;
+        padding: 0;
+        margin: 10px 6px;
+        overflow: hidden;
+        border-top: 1px solid var(--ex-border-soft);
+    }
+
+    html.ex-collapsed .ex-nav > .ex-nav-label:first-child {
+        display: none;
+    }
+
+    html.ex-collapsed .ex-collapse svg {
+        transform: rotate(180deg);
+    }
+}
+
 @media (max-width: 991.98px) {
+    .ex-collapse {
+        display: none;
+    }
+
     .ex-sidebar {
         transform: translateX(-100%);
         transition: transform .2s ease;

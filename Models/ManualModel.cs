@@ -10,6 +10,10 @@ public class Manual
     public string M_ID { get; set; } = null!;
     public string? DOC_NUM { get; set; }
     public string? JOB_NUMBER { get; set; }
+
+    /// 고른 datasheet 의 PROCESS_ID (exodus_datasheet 의 TB_DS_DOCUMENT.D_ID 와 같은 값).
+    public string? PROCESS_ID { get; set; }
+
     public string MODEL_NAME { get; set; } = null!;
     public string? LABEL { get; set; }
     public string? COOLING { get; set; }

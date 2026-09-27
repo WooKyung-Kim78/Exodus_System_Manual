@@ -1,0 +1,65 @@
+/* Carlito — Calibri 와 글자 폭이 같은 오픈 글꼴. SIL OFL 1.1 (assets/fonts/carlito/OFL.txt) */
+@font-face {
+    font-family: 'Carlito';
+    src: url('../assets/fonts/carlito/Carlito-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: block;
+}
+
+@font-face {
+    font-family: 'Carlito';
+    src: url('../assets/fonts/carlito/Carlito-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: block;
+}
+
+@font-face {
+    font-family: 'Carlito';
+    src: url('../assets/fonts/carlito/Carlito-Italic.ttf') format('truetype');
+    font-weight: 400;
+    font-style: italic;
+    font-display: block;
+}
+
+@font-face {
+    font-family: 'Carlito';
+    src: url('../assets/fonts/carlito/Carlito-BoldItalic.ttf') format('truetype');
+    font-weight: 700;
+    font-style: italic;
+    font-display: block;
+}
+
+/* Poppins — datasheet 사양표 글꼴. SIL OFL 1.1 (assets/fonts/poppins/OFL.txt) */
+@font-face {
+    font-family: 'Poppins';
+    src: url('../assets/fonts/poppins/Poppins-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: block;
+}
+
+@font-face {
+    font-family: 'Poppins';
+    src: url('../assets/fonts/poppins/Poppins-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: block;
+}
+
+@font-face {
+    font-family: 'Poppins';
+    src: url('../assets/fonts/poppins/Poppins-SemiBold.ttf') format('truetype');
+    font-weight: 600;
+    font-style: normal;
+    font-display: block;
+}
+
+@font-face {
+    font-family: 'Poppins';
+    src: url('../assets/fonts/poppins/Poppins-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: block;
+}

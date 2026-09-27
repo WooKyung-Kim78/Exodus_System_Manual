@@ -19,6 +19,14 @@ public class SectionItem
 
     /// 가로 정렬은 STYLE_JSON 과 별개로 항상 목차가 직접 가진다.
     public string TITLE_ALIGN { get; set; } = "LEFT";
+    /// NORMAL 은 보통 목차, PAGEBREAK 는 제목·내용 없이 페이지만 끊는 목차.
+    public string SEC_TYPE { get; set; } = "NORMAL";
+
+    /// N 이면 PDF 앞쪽 목차 페이지에만 안 보인다. 본문에는 나온다.
+    public string SHOW_IN_TOC { get; set; } = "Y";
+
+    /// 개별 스타일(STYLE_JSON)과 별개로 동작하는 밑줄 스위치.
+    public string TITLE_UNDERLINE { get; set; } = "N";
 
     /// 템플릿에서 온 목차면 원본 TPL_ID.
     public long? TPL_ID { get; set; }
@@ -66,4 +74,14 @@ public class InputSection
 
     [RegularExpression("^(LEFT|CENTER|RIGHT)$", ErrorMessage = "가로 정렬 값이 올바르지 않습니다.")]
     public string TITLE_ALIGN { get; set; } = "LEFT";
+
+    [RegularExpression("^(NORMAL|PAGEBREAK)$", ErrorMessage = "목차 종류 값이 올바르지 않습니다.")]
+    public string SEC_TYPE { get; set; } = "NORMAL";
+
+    /// 보내지 않으면(null) 서버가 기존 값을 그대로 둔다.
+    [RegularExpression("^(Y|N)$", ErrorMessage = "목차 표시 값이 올바르지 않습니다.")]
+    public string? SHOW_IN_TOC { get; set; }
+
+    [RegularExpression("^(Y|N)$", ErrorMessage = "제목 밑줄 값이 올바르지 않습니다.")]
+    public string? TITLE_UNDERLINE { get; set; }
 }

@@ -1,0 +1,19 @@
+/* 매뉴얼 문서(미리보기 · PDF · 편집기)의 글자 크기 기준값. 크기를 바꿀 때는 이 파일만 고친다.
+   본문 크기(--doc-font-size)는 문서마다 TB_S_MANUAL.BODY_FONT_SIZE 로 덮어쓴다. 제목 크기는 HeadingStyle.Defaults() 가 정한다.
+   정리 문서: docs/font-size.md */
+:root {
+    /* 본문 */
+    --doc-font-size: 12pt;
+    --doc-size-table: 12pt;      /* 본문 안 표(CKEditor 표, 표 블록) */
+    --doc-size-small: 12pt;        /* 이미지 캡션, 표지 문서번호 */
+
+    /* 표지 · 목차 */
+    --doc-size-cover: 14pt;
+    --doc-size-toc-title: 12pt;
+
+    /* SPECIFICATIONS 사양표 — datasheet 원본 px × 0.8 */
+    --ds-size-body: 11pt;
+    --ds-size-thead: 11pt;
+    --ds-size-category: 11pt;
+    --ds-size-note: 10pt;        /* category 옆 머리말, 표 아래 꼬리말 */
+}

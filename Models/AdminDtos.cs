@@ -19,6 +19,14 @@ public class SectionTemplateItem
     /// 제목 가로 정렬. LEFT / CENTER / RIGHT.
     public string TITLE_ALIGN { get; set; } = "LEFT";
 
+    /// NORMAL 은 보통 목차, PAGEBREAK 는 제목·내용 없이 페이지만 끊는 목차.
+    public string SEC_TYPE { get; set; } = "NORMAL";
+
+    /// N 이면 PDF 앞쪽 목차 페이지에만 안 보인다. 본문에는 나온다.
+    public string SHOW_IN_TOC { get; set; } = "Y";
+
+    public string TITLE_UNDERLINE { get; set; } = "N";
+
     public DateTime? REG_DT { get; set; }
     public DateTime? UPT_DT { get; set; }
 }
@@ -36,6 +44,7 @@ public class TemplateOptionItem
     public int ORDER_NUM { get; set; }
     public string? ASSIGNED_TEAM { get; set; }
     public string TITLE_ALIGN { get; set; } = "LEFT";
+    public string SEC_TYPE { get; set; } = "NORMAL";
 
     /// 이미 문서에 들어가 있는지 여부.
     public string IS_ADDED { get; set; } = "N";
@@ -72,29 +81,79 @@ public class InputSectionTemplate
     [RegularExpression("^(LEFT|CENTER|RIGHT)$", ErrorMessage = "가로 정렬 값이 올바르지 않습니다.")]
     public string TITLE_ALIGN { get; set; } = "LEFT";
 
+    [RegularExpression("^(NORMAL|PAGEBREAK)$", ErrorMessage = "목차 종류 값이 올바르지 않습니다.")]
+    public string SEC_TYPE { get; set; } = "NORMAL";
+
+    [RegularExpression("^(Y|N)$", ErrorMessage = "목차 표시 값이 올바르지 않습니다.")]
+    public string SHOW_IN_TOC { get; set; } = "Y";
+
+    [RegularExpression("^(Y|N)$", ErrorMessage = "제목 밑줄 값이 올바르지 않습니다.")]
+    public string TITLE_UNDERLINE { get; set; } = "N";
+
     public int? ORDER_NUM { get; set; }
 }
 
-public class UserRoleItem
+public class UserAdminItem
 {
+    public long IDX { get; set; }
     public string USER_ID { get; set; } = null!;
     public string FULL_NAME { get; set; } = null!;
+    public string? EMAIL { get; set; }
     public string? DIVISION { get; set; }
     public string? TEAM { get; set; }
-    public string? AUTHORIZED { get; set; }
+    public string AUTHORIZED { get; set; } = "S";
+    public string IS_DELETED { get; set; } = "N";
+    public string? SUPERVISOR_USER_ID { get; set; }
+    public string? SUPERVISOR_NAME { get; set; }
     public string ROLE_NAME { get; set; } = null!;
+    public DateTime? REG_DT { get; set; }
     public DateTime? UPT_DT { get; set; }
 }
 
-public class InputUserRole
+public class InputUserAccount
+{
+    /// 신규 등록 여부를 화면이 아니라 서버가 판단하도록 아이디만 받는다.
+    [Required(ErrorMessage = "아이디는 필수입니다.")]
+    [RegularExpression("^[0-9a-zA-Z._-]{4,20}$", ErrorMessage = "아이디는 영문·숫자 4~20자로 입력하세요.")]
+    public string USER_ID { get; set; } = null!;
+
+    [Required(ErrorMessage = "이름은 필수입니다.")]
+    [StringLength(100, ErrorMessage = "이름은 100자 이내로 입력하세요.")]
+    public string FULL_NAME { get; set; } = null!;
+
+    [EmailAddress(ErrorMessage = "이메일 형식이 올바르지 않습니다.")]
+    [StringLength(100, ErrorMessage = "이메일은 100자 이내로 입력하세요.")]
+    public string? EMAIL { get; set; }
+
+    [StringLength(100, ErrorMessage = "본부는 100자 이내로 입력하세요.")]
+    public string? DIVISION { get; set; }
+
+    [StringLength(100, ErrorMessage = "팀은 100자 이내로 입력하세요.")]
+    public string? TEAM { get; set; }
+
+    [StringLength(20)]
+    public string? SUPERVISOR_USER_ID { get; set; }
+
+    [Required]
+    [RegularExpression("^(ADMIN|USER|READER)$", ErrorMessage = "역할 값이 올바르지 않습니다.")]
+    public string ROLE_NAME { get; set; } = "USER";
+
+    [Required]
+    [RegularExpression("^(Y|S|N)$", ErrorMessage = "계정 상태 값이 올바르지 않습니다.")]
+    public string AUTHORIZED { get; set; } = "Y";
+
+    /// 신규 등록일 때만 쓰는 초기 비밀번호.
+    public string? N_PASSWORD { get; set; }
+}
+
+public class InputUserPassword
 {
     [Required]
     [StringLength(20)]
     public string USER_ID { get; set; } = null!;
 
-    [Required]
-    [RegularExpression("^(ADMIN|USER|READER)$", ErrorMessage = "역할 값이 올바르지 않습니다.")]
-    public string ROLE_NAME { get; set; } = null!;
+    [Required(ErrorMessage = "새 비밀번호를 입력하세요.")]
+    public string N_PASSWORD { get; set; } = null!;
 }
 
 public class CommonCodeItem

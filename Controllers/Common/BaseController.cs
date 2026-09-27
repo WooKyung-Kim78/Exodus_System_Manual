@@ -49,10 +49,20 @@ public abstract class BaseController<T> : Controller where T : BaseController<T>
     }
 
     protected IActionResult JsonOk(object? data = null)
-        => Ok(new { success = true, data });
+    {
+        NoStore();
+        return Ok(new { success = true, data });
+    }
 
     protected IActionResult JsonFail(int statusCode, string message)
-        => StatusCode(statusCode, new { success = false, message });
+    {
+        NoStore();
+        return StatusCode(statusCode, new { success = false, message });
+    }
+
+    /// 로그인 사용자별 데이터라 브라우저/프록시에 남으면 안 된다.
+    private void NoStore()
+        => Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
 
     protected string FirstError()
         => ModelState.Values.SelectMany(v => v.Errors).FirstOrDefault()?.ErrorMessage ?? "입력값을 확인하세요.";

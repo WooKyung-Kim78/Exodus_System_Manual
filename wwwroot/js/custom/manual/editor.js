@@ -19,20 +19,96 @@ var ACTION_CLASS = {
 };
 var FONT_STACK = {
     ARIAL: 'Arial, Helvetica, sans-serif',
-    CALIBRI: "Calibri, 'Segoe UI', sans-serif",
+    CARLITO: "Carlito, 'Malgun Gothic', sans-serif",
     VERDANA: 'Verdana, Geneva, sans-serif',
     TAHOMA: 'Tahoma, Geneva, sans-serif',
     GEORGIA: "Georgia, 'Times New Roman', serif",
     TIMES: "'Times New Roman', Times, serif",
 };
-var DEFAULT_HEADING_STYLE = {
-    1: { size: 18, color: '#181c32', bold: true, underline: false },
-    2: { size: 15, color: '#181c32', bold: true, underline: false },
-    3: { size: 13, color: '#3f4254', bold: true, underline: false },
-};
+// 제목 기본 스타일은 서버(HeadingStyle.Defaults)가 페이지에 넣어 준다.
+var DEFAULT_HEADING_STYLE = window.HEADING_DEFAULTS || {};
 // 가로 정렬은 STYLE_JSON 과 별개 값이라 따로 다룬다.
 var ALIGN_CSS = { LEFT: 'left', CENTER: 'center', RIGHT: 'right' };
 function alignCss(a) { return ALIGN_CSS[a] || 'left'; }
+
+// TITLE_UNDERLINE 도 개별 스타일과 별개라 둘 중 하나만 켜도 밑줄을 그린다.
+function withUnderline(css, flag) {
+    if (flag === 'Y') css.textDecoration = 'underline';
+    return css;
+}
+
+var BLOCK_LABEL = { TEXT: '텍스트', IMAGE: '이미지', TABLE: '표' };
+var CELL_ALIGN = { left: 'left', center: 'center', right: 'right' };
+
+/* ---------- 표 블록 ----------
+   편집용 격자 데이터는 STYLE_JSON 에, 미리보기·PDF 가 그대로 그릴 HTML 은
+   CONTENT_HTML 에 넣는다. 두 값은 저장 시점에 함께 만든다. */
+function newTable() {
+    return {
+        head: ['No.', 'Title', 'Function'],
+        align: ['center', 'center', 'left'],
+        widths: [10, 25, 65],
+        rows: [['1', '', ''], ['2', '', '']],
+    };
+}
+
+function normalizeTable(json) {
+    var t = null;
+    try { t = json ? JSON.parse(json) : null; }
+    catch (e) { t = null; }
+    if (!t || !Array.isArray(t.head) || !t.head.length) return newTable();
+
+    var text = function (v) { return v == null ? '' : String(v); };
+    var head = t.head.map(text);
+    var rows = (Array.isArray(t.rows) ? t.rows : []).map(function (r) {
+        var src = Array.isArray(r) ? r : [];
+        return head.map(function (_, i) { return text(src[i]); });
+    });
+
+    return {
+        head: head,
+        align: head.map(function (_, i) { return CELL_ALIGN[t.align && t.align[i]] || 'left'; }),
+        widths: head.map(function (_, i) { return Number(t.widths && t.widths[i]) || 0; }),
+        rows: rows.length ? rows : [head.map(function () { return ''; })],
+    };
+}
+
+function escapeHtml(v) {
+    return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function cellHtml(v) {
+    return escapeHtml(v).replace(/\r?\n/g, '<br>');
+}
+
+// 표 테두리·머리글 배경은 preview.css 가 잡아주므로 여기서는 너비와 정렬만 남긴다.
+function tableHtml(t) {
+    var cols = t.widths.some(function (w) { return w > 0; })
+        ? '<colgroup>' + t.widths.map(function (w) {
+            return w > 0 ? '<col style="width:' + w + '%">' : '<col>';
+        }).join('') + '</colgroup>'
+        : '';
+
+    var head = '<thead><tr>' + t.head.map(function (h, i) {
+        return '<th style="text-align:' + (CELL_ALIGN[t.align[i]] || 'center') + '">' + cellHtml(h) + '</th>';
+    }).join('') + '</tr></thead>';
+
+    var body = '<tbody>' + t.rows.map(function (r) {
+        return '<tr>' + r.map(function (c, i) {
+            return '<td style="text-align:' + (CELL_ALIGN[t.align[i]] || 'left') + '">' + cellHtml(c) + '</td>';
+        }).join('') + '</tr>';
+    }).join('') + '</tbody>';
+
+    return '<table>' + cols + head + body + '</table>';
+}
+
+// 서버에서 받은 블록에 편집용 격자를 붙인다. Vue 가 반응형으로 바꾸기 전에 넣어야 한다.
+function prepareBlock(b) {
+    if (b && b.ELE_TYPE === 'TABLE') b.TABLE = normalizeTable(b.STYLE_JSON);
+    return b;
+}
 
 new Vue({
     el: '#app',
@@ -52,19 +128,24 @@ new Vue({
         savingSection: false,
         secLoading: false,
         secStyleOn: false,
-        secStyle: { size: 18, color: '#181c32', bold: true, underline: false },
+        secStyle: $.extend({}, DEFAULT_HEADING_STYLE[1]),
         templateOptions: [],
         templateLoading: false,
         addingTpl: null,
+        addingPageBreak: false,
         history: [],
         historyLoading: false,
         headingStyle: JSON.parse(JSON.stringify(DEFAULT_HEADING_STYLE)),
-        bodyFont: 'ARIAL',
+        bodyFont: 'CARLITO',
+        bodyFontSize: 12,
         bodyLineHeight: 1.2,
         bodyLetterSpacing: 0,
         ckReady: typeof window.createBlockEditor === 'function',
         editorLoading: {},
         dirty: {},
+        specHtml: '',
+        specMessage: '',
+        specLoading: false,
     },
     computed: {
         canEdit: function () { return this.access && this.access.CAN_EDIT === 'Y'; },
@@ -74,12 +155,17 @@ new Vue({
         },
         secFormCss: function () {
             var base = this.headingStyle[this.secForm.SEC_LEVEL] || DEFAULT_HEADING_STYLE[1];
-            return $.extend(this.toCss(this.secStyleOn ? this.secStyle : base),
-                            { textAlign: alignCss(this.secForm.TITLE_ALIGN) });
+            return withUnderline($.extend(this.toCss(this.secStyleOn ? this.secStyle : base),
+                                          { textAlign: alignCss(this.secForm.TITLE_ALIGN) }),
+                                 this.secForm.TITLE_UNDERLINE);
         },
         activeSection: function () {
             var self = this;
             return this.sections.filter(function (s) { return s.SEC_ID === self.activeSecId; })[0] || null;
+        },
+        // SPECIFICATIONS 목차는 datasheet 에서 바로 읽어 그린다. 판단 기준은 서버와 같다.
+        isSpecSection: function () {
+            return !!this.activeSection && /SPECIFICATION/i.test(this.activeSection.TITLE || '');
         },
         activeBlocks: function () {
             var self = this;
@@ -98,6 +184,8 @@ new Vue({
     },
     watch: {
         activeBlocks: function () { this.$nextTick(this.syncEditors); },
+        // 목차를 누를 때마다 datasheet 에서 사양을 다시 가져온다.
+        activeSecId: function () { this.loadSpec(); },
         // 개별 지정을 켜기 전까지는 선택한 단계의 공통값을 따라가게 둔다.
         'secForm.SEC_LEVEL': function (lv) {
             if (!this.secStyleOn) this.secStyle = $.extend({}, this.levelStyle(lv));
@@ -118,6 +206,13 @@ new Vue({
         }
         self.callData();
         self.callTeams();
+        // 미리보기에서 뒤로 가기로 돌아오면 bfcache 복원이라 mounted 가 다시 돌지 않는다.
+        window.addEventListener('pageshow', function (e) {
+            if (!e.persisted || self.hasDirty) return;
+            self.loading = true;
+            self.destroyEditors();
+            self.callData();
+        });
         window.addEventListener('beforeunload', function (e) {
             if (!self.hasDirty) return;
             e.preventDefault();
@@ -140,7 +235,7 @@ new Vue({
                 .done(function (res) {
                     self.header = res.data.header;
                     self.sections = res.data.sections;
-                    self.blocks = res.data.blocks;
+                    self.blocks = res.data.blocks.map(prepareBlock);
                     self.editorLoading = {};
                     self.dirty = {};
                     self.blocks.forEach(function (block) {
@@ -153,7 +248,8 @@ new Vue({
                         catch (e) { /* 저장된 값이 깨졌으면 기본값을 쓴다 */ }
                     }
                     if (self.header) {
-                        self.bodyFont = self.header.BODY_FONT || 'ARIAL';
+                        self.bodyFont = FONT_STACK[self.header.BODY_FONT] ? self.header.BODY_FONT : 'CARLITO';
+                        self.bodyFontSize = Number(self.header.BODY_FONT_SIZE) || 12;
                         self.bodyLineHeight = Number(self.header.BODY_LINE_HEIGHT) || 1.2;
                         self.bodyLetterSpacing = Number(self.header.BODY_LETTER_SPACING) || 0;
                         self.applyBodyStyle();
@@ -181,6 +277,23 @@ new Vue({
             this.destroyEditors();
             this.activeSecId = s.SEC_ID;
         },
+
+        // SPECIFICATIONS 목차의 사양은 저장된 내용이 아니라 누를 때마다 datasheet 에서 읽는다.
+        loadSpec: function () {
+            var self = this;
+            self.specHtml = '';
+            self.specMessage = '';
+            if (!self.isSpecSection) return;
+
+            self.specLoading = true;
+            $.get('/manual/spec', { mid: self.mid })
+                .done(function (res) {
+                    self.specHtml = (res.data && res.data.html) || '';
+                    self.specMessage = (res.data && res.data.message) || '';
+                })
+                .fail(function (xhr) { self.specMessage = getErrorMessage(xhr); })
+                .always(function () { self.specLoading = false; });
+        },
         openSection: function (s) {
             var self = this;
             self.secError = '';
@@ -204,8 +317,10 @@ new Vue({
         setSecForm: function (s) {
             this.secForm = s
                 ? { SEC_ID: s.SEC_ID, TITLE: s.TITLE, SEC_LEVEL: s.SEC_LEVEL, SEC_NO: s.SEC_NO,
-                    ASSIGNED_TEAM: s.ASSIGNED_TEAM, TITLE_ALIGN: s.TITLE_ALIGN || 'LEFT' }
-                : { SEC_ID: null, TITLE: '', SEC_LEVEL: 1, SEC_NO: '', ASSIGNED_TEAM: null, TITLE_ALIGN: 'LEFT' };
+                    ASSIGNED_TEAM: s.ASSIGNED_TEAM, TITLE_ALIGN: s.TITLE_ALIGN || 'LEFT',
+                    SHOW_IN_TOC: s.SHOW_IN_TOC || 'Y', TITLE_UNDERLINE: s.TITLE_UNDERLINE || 'N' }
+                : { SEC_ID: null, TITLE: '', SEC_LEVEL: 1, SEC_NO: '', ASSIGNED_TEAM: null,
+                    TITLE_ALIGN: 'LEFT', SHOW_IN_TOC: 'Y', TITLE_UNDERLINE: 'N' };
 
             var own = s ? this.parseStyle(s.STYLE_JSON) : null;
             this.secStyleOn = !!own;
@@ -245,7 +360,12 @@ new Vue({
         removeSection: function () {
             var self = this;
             var s = self.activeSection;
-            if (!s || !confirm('"' + s.TITLE + '" 목차를 삭제합니다.\n안에 작성된 내용도 함께 삭제됩니다.')) return;
+            if (!s) return;
+
+            var message = self.isPageBreak(s)
+                ? '페이지 나눔을 삭제합니다.'
+                : '"' + s.TITLE + '" 목차를 삭제합니다.\n안에 작성된 내용도 함께 삭제됩니다.';
+            if (!confirm(message)) return;
 
             $.ajax({ url: '/editor/section', method: 'DELETE', data: { secId: s.SEC_ID, mid: self.mid } })
                 .done(function () {
@@ -293,6 +413,7 @@ new Vue({
             if (h.FIELD_NAME === 'SECTION_ORDER') return '목차 순서';
             if (h.AFTER_VALUE === 'IMAGE') return '이미지 블록';
             if (h.AFTER_VALUE === 'TEXT') return '텍스트 블록';
+            if (h.AFTER_VALUE === 'TABLE') return '표 블록';
             return h.ELE_ID ? '블록' : (h.FIELD_NAME || '');
         },
         formatDateTime: function (value) {
@@ -319,26 +440,45 @@ new Vue({
             self.addingTpl = t.TPL_ID;
             $.post('/editor/template-section', { mid: self.mid, tplId: t.TPL_ID })
                 .done(function (res) {
-                    t.IS_ADDED = 'Y';
+                    if (!self.isPageBreak(t)) t.IS_ADDED = 'Y';
                     self.callData();
                     self.activeSecId = Number(res.data.SEC_ID);
-                    toastOk('"' + t.TITLE + '" 목차를 추가했습니다.');
+                    toastOk(self.isPageBreak(t) ? '페이지 나눔을 추가했습니다.' : '"' + t.TITLE + '" 목차를 추가했습니다.');
                 })
                 .fail(function (xhr) { toastError(getErrorMessage(xhr)); })
                 .always(function () { self.addingTpl = null; });
+        },
+        // 템플릿에 없어도 필요한 자리에 바로 넣는다. 맨 뒤에 붙고 ↑↓ 로 옮긴다.
+        addPageBreak: function () {
+            var self = this;
+            self.addingPageBreak = true;
+            $.post('/editor/section', {
+                M_ID: self.mid, TITLE: '페이지 나눔', SEC_LEVEL: 1,
+                TITLE_ALIGN: 'LEFT', SEC_TYPE: 'PAGEBREAK',
+            })
+                .done(function (res) {
+                    self.modal('templateModal').hide();
+                    self.callSections();
+                    self.activeSecId = Number(res.data.SEC_ID);
+                    toastOk('페이지 나눔을 추가했습니다.');
+                })
+                .fail(function (xhr) { toastError(getErrorMessage(xhr)); })
+                .always(function () { self.addingPageBreak = false; });
         },
 
         /* ---------- 본문 블록 ---------- */
         addBlock: function (type) {
             var self = this;
             var order = self.activeBlocks.length + 1;
+            var table = type === 'TABLE' ? newTable() : null;
 
             $.post('/editor/block', {
                 M_ID: self.mid, SEC_ID: self.activeSecId, ELE_TYPE: type,
-                ORDER_NUM: order, WIDTH: type === 'IMAGE' ? 100 : 0, HEIGHT: 0,
-                CONTENT_HTML: type === 'TEXT' ? '<p></p>' : null,
+                ORDER_NUM: order, WIDTH: type === 'TEXT' ? 0 : 100, HEIGHT: 0,
+                CONTENT_HTML: type === 'TEXT' ? '<p></p>' : (table ? tableHtml(table) : null),
+                STYLE_JSON: table ? JSON.stringify(table) : null,
             })
-                .done(function (res) { self.blocks.push(res.data.block); })
+                .done(function (res) { self.blocks.push(prepareBlock(res.data.block)); })
                 .fail(function (xhr) { toastError(getErrorMessage(xhr)); });
         },
         pickImage: function () {
@@ -402,6 +542,11 @@ new Vue({
             var self = this;
             self.saveState = '저장 중...';
 
+            if (b.ELE_TYPE === 'TABLE' && b.TABLE) {
+                b.STYLE_JSON = JSON.stringify(b.TABLE);
+                b.CONTENT_HTML = tableHtml(b.TABLE);
+            }
+
             // 동시 편집이 없어 ROW_VER 를 보내지 않는다. 마지막 저장이 그대로 반영된다.
             return $.post('/editor/block', {
                 ELE_ID: b.ELE_ID, M_ID: self.mid, SEC_ID: b.SEC_ID, ELE_TYPE: b.ELE_TYPE,
@@ -422,6 +567,32 @@ new Vue({
         },
         markDirty: function (b) {
             this.$set(this.dirty, b.ELE_ID, true);
+        },
+
+        /* ---------- 표 블록 ---------- */
+        addTableRow: function (b) {
+            b.TABLE.rows.push(b.TABLE.head.map(function () { return ''; }));
+            this.markDirty(b);
+        },
+        removeTableRow: function (b, index) {
+            if (b.TABLE.rows.length <= 1) return;
+            b.TABLE.rows.splice(index, 1);
+            this.markDirty(b);
+        },
+        addTableCol: function (b) {
+            b.TABLE.head.push('');
+            b.TABLE.align.push('left');
+            b.TABLE.widths.push(0);
+            b.TABLE.rows.forEach(function (r) { r.push(''); });
+            this.markDirty(b);
+        },
+        removeTableCol: function (b, index) {
+            if (b.TABLE.head.length <= 1) return;
+            b.TABLE.head.splice(index, 1);
+            b.TABLE.align.splice(index, 1);
+            b.TABLE.widths.splice(index, 1);
+            b.TABLE.rows.forEach(function (r) { r.splice(index, 1); });
+            this.markDirty(b);
         },
         saveActiveBlocks: function () {
             var self = this;
@@ -481,7 +652,8 @@ new Vue({
         // 지정은 문서 정보 화면에서 하고, 여기서는 적용만 한다.
         applyBodyStyle: function () {
             var root = document.documentElement;
-            root.style.setProperty('--doc-font', FONT_STACK[this.bodyFont] || FONT_STACK.ARIAL);
+            root.style.setProperty('--doc-font', FONT_STACK[this.bodyFont] || FONT_STACK.CARLITO);
+            root.style.setProperty('--doc-font-size', this.bodyFontSize + 'pt');
             root.style.setProperty('--doc-line-height', String(this.bodyLineHeight));
             root.style.setProperty('--doc-letter-spacing', this.bodyLetterSpacing + 'px');
         },
@@ -491,6 +663,9 @@ new Vue({
         },
         statusLabel: function (s) { return STATUS_LABEL[s] || s; },
         statusClass: function (s) { return STATUS_CLASS[s] || 'badge badge-light'; },
+        blockLabel: function (t) { return BLOCK_LABEL[t] || t; },
+        // 목차·템플릿 항목 모두 같은 SEC_TYPE 값을 쓴다.
+        isPageBreak: function (s) { return !!s && s.SEC_TYPE === 'PAGEBREAK'; },
         levelLabel: function (lv) { return LEVEL_LABEL[lv] || ''; },
         levelStyle: function (lv) {
             return $.extend({}, DEFAULT_HEADING_STYLE[lv] || DEFAULT_HEADING_STYLE[1], this.headingStyle[lv] || {});
@@ -513,8 +688,9 @@ new Vue({
         },
         // 공통 스타일 위에 목차가 가진 값만 덮어쓴다.
         sectionCss: function (s) {
-            return $.extend(this.toCss($.extend({}, this.levelStyle(s.SEC_LEVEL), this.parseStyle(s.STYLE_JSON) || {})),
-                            { textAlign: alignCss(s.TITLE_ALIGN) });
+            return withUnderline($.extend(this.toCss($.extend({}, this.levelStyle(s.SEC_LEVEL), this.parseStyle(s.STYLE_JSON) || {})),
+                                          { textAlign: alignCss(s.TITLE_ALIGN) }),
+                                 s.TITLE_UNDERLINE);
         },
     },
 });

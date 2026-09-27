@@ -108,7 +108,7 @@
 .block-body .ck-editor__editable {
     min-height: 360px;
     padding: 1rem 1.25rem;
-    font-size: 12pt;
+    font-size: var(--doc-font-size, 12pt);
     line-height: var(--doc-line-height);
     letter-spacing: var(--doc-letter-spacing);
     background: #fff;
@@ -116,12 +116,15 @@
     box-shadow: none !important;
 }
 
-/* 글꼴·크기는 문서 전체 통일이라 과거 데이터의 인라인 값을 무시한다. */
+/* 글꼴·크기는 문서 전체 통일이라 과거 데이터의 인라인 값을 무시한다. (크기 기준값: doc-type.css) */
 .block-body .ck-editor__editable,
 .block-body .ck-editor__editable * {
-    font-family: var(--doc-font) !important;
-    font-size: 12pt !important;
+    font-family: var(--doc-font, Carlito, 'Malgun Gothic', sans-serif) !important;
+    font-size: var(--doc-font-size, 12pt) !important;
 }
+
+.block-body .ck-editor__editable table,
+.block-body .ck-editor__editable table * { font-size: var(--doc-size-table, 9.5pt) !important; }
 
 /* 편집 화면도 미리보기와 같은 간격으로 보여야 한다. */
 .block-body .ck-editor__editable p,

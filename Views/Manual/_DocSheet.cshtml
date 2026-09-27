@@ -1,0 +1,142 @@
+@model ExodusSystemManual.Models.PreviewViewModel
+@{
+    var h = Model.Header;
+    var sheetClass = h.PAGE_SIZE == "A4" ? "a4" : "letter";
+}
+<div class="preview-stage" style="--doc-font:@Model.BodyFontStack; --doc-font-size:@(Model.BodyFontSize)pt; --doc-line-height:@Model.BodyLineHeight; --doc-letter-spacing:@(Model.BodyLetterSpacing)px;">
+    <div class="doc-sheet @sheetClass" id="docSheet" data-filename="@Model.FileName" data-version="@h.DOC_VERSION">
+
+        <!-- 표지 -->
+        <div class="doc-cover avoid-break">
+            @if (!string.IsNullOrWhiteSpace(Model.CoverLogoPath))
+            {
+                <img class="cover-logo" src="@Model.CoverLogoPath" alt="logo" />
+            }
+
+            <div class="cover-headline">
+                @if (!string.IsNullOrWhiteSpace(Model.CoverTitle1))
+                {
+                    <div>@Model.CoverTitle1</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.CoverTitle2))
+                {
+                    <div>@Model.CoverTitle2</div>
+                }
+                <div>@h.MODEL_NAME</div>
+                @if (!string.IsNullOrWhiteSpace(h.JOB_NUMBER))
+                {
+                    <div>@h.JOB_NUMBER</div>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(h.COVER_IMAGE_PATH))
+            {
+                <img class="cover-photo" src="@h.COVER_IMAGE_PATH" alt="product" />
+            }
+
+            <div class="cover-meta">
+                Document No. @h.DOC_NUM · Rev @h.REVISION ·
+                @((h.PUBLISH_DATE ?? h.REG_DT).ToString("yyyy-MM-dd"))
+            </div>
+        </div>
+
+        @if (Model.Sections.Count > 0)
+        {
+            // 페이지 나눔과 대제목의 새 페이지가 겹치면 빈 페이지가 생기므로 다음 내용 앞에서 한 번만 끊는다.
+            var pendingBreak = false;
+            <!-- 목차 -->
+            <div class="page-break"></div>
+            <div class="doc-toc">
+                <div class="doc-toc-title">Table of Contents</div>
+                @foreach (var s in Model.Sections.Where(x => x.SEC_TYPE != "PAGEBREAK" && x.SHOW_IN_TOC != "N"))
+                {
+                    <a class="toc-row lv@(s.SEC_LEVEL)" href="#sec-@s.SEC_ID">
+                        @if (!string.IsNullOrWhiteSpace(s.SEC_NO))
+                        {
+                            <span class="toc-no">@s.SEC_NO</span>
+                        }
+                        <span class="toc-text">@s.TITLE</span>
+                        <span class="toc-leader"></span>
+                        <span class="toc-page">@Model.TocPageOf(PdfTocMarks.SectionKey(s.SEC_ID))</span>
+                    </a>
+
+                    @if (Model.SpecSecId == s.SEC_ID && !string.IsNullOrWhiteSpace(Model.SpecHtml))
+                    {
+                        var catLevel = Math.Min(s.SEC_LEVEL + 1, 3);
+                        for (var i = 0; i < Model.SpecCategories.Count; i++)
+                        {
+                            <a class="toc-row lv@(catLevel)" href="#sec-@s.SEC_ID">
+                                <span class="toc-text">@Model.SpecCategories[i]</span>
+                                <span class="toc-leader"></span>
+                                <span class="toc-page">@Model.TocPageOf(PdfTocMarks.CategoryKey(i))</span>
+                            </a>
+                        }
+                    }
+                }
+            </div>
+
+            <!-- 본문 -->
+            @foreach (var s in Model.Sections)
+            {
+                if (s.SEC_TYPE == "PAGEBREAK")
+                {
+                    pendingBreak = true;
+                    continue;
+                }
+
+                var style = Model.StyleOf(s);
+                var blocks = Model.Blocks.TryGetValue(s.SEC_ID, out var list) ? list : new List<ExodusSystemManual.Models.ElementItem>();
+
+                if (pendingBreak || s.SEC_LEVEL == 1)
+                {
+                    <div class="page-break"></div>
+                    pendingBreak = false;
+                }
+
+                <div class="doc-section" id="sec-@s.SEC_ID">
+                    <div class="doc-section-title avoid-break" style="@style.ToCss()text-align:@TitleAligns.CssOf(s.TITLE_ALIGN);">
+                        @if (Model.EmitTocMarks)
+                        {
+                            @Html.Raw(PdfTocMarks.Html(PdfTocMarks.SectionKey(s.SEC_ID)))
+                        }
+                        @if (!string.IsNullOrWhiteSpace(s.SEC_NO))
+                        {
+                            <span class="sec-no">@s.SEC_NO</span>
+                        }
+                        <span>@s.TITLE</span>
+                    </div>
+
+                    @if (Model.SpecSecId == s.SEC_ID && !string.IsNullOrWhiteSpace(Model.SpecHtml))
+                    {
+                        <div class="doc-block">
+                            @Html.Raw(Model.EmitTocMarks ? Model.SpecHtmlMarked : Model.SpecHtml)
+                        </div>
+                    }
+
+                    @foreach (var b in blocks)
+                    {
+                        <div class="doc-block avoid-break @(b.ELE_TYPE == "TABLE" ? "doc-block-table" : "")">
+                            @if (b.ELE_TYPE == "IMAGE" && !string.IsNullOrEmpty(b.IMAGE_PATH))
+                            {
+                                <img src="@b.IMAGE_PATH" alt="@b.CAPTION" style="width:@(b.WIDTH > 0 ? b.WIDTH : 100)%" />
+                                @if (!string.IsNullOrWhiteSpace(b.CAPTION))
+                                {
+                                    <div class="block-caption">@b.CAPTION</div>
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(b.CONTENT_HTML))
+                            {
+                                @Html.Raw(b.CONTENT_HTML)
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <div class="page-break"></div>
+            <p class="text-center text-muted">작성된 목차가 없습니다.</p>
+        }
+    </div>
+</div>

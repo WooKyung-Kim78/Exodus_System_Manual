@@ -31,11 +31,16 @@ public class ManualHeader
     public string M_ID { get; set; } = null!;
     public string? DOC_NUM { get; set; }
     public string? JOB_NUMBER { get; set; }
+    public string? PROCESS_ID { get; set; }
     public string MODEL_NAME { get; set; } = null!;
     public string? LABEL { get; set; }
     public string? COOLING { get; set; }
     public string? OPTION_TEXT { get; set; }
     public string REVISION { get; set; } = null!;
+
+    /// PDF 꼬리말에 찍히는 표기용 버전. REVISION 과는 별개다.
+    public string? DOC_VERSION { get; set; }
+
     public string STATUS { get; set; } = null!;
     public string PAGE_SIZE { get; set; } = null!;
     public string PAGE_ORIENTATION { get; set; } = null!;
@@ -81,6 +86,10 @@ public class InputNewManual
     [StringLength(50, ErrorMessage = "Job Number 는 50자 이내로 입력하세요.")]
     public string? JOB_NUMBER { get; set; }
 
+    /// Job Number 로 고른 datasheet 의 PROCESS_ID. 사양을 다시 읽을 때 이 값을 쓴다.
+    [StringLength(50)]
+    public string? PROCESS_ID { get; set; }
+
     [RegularExpression("^(EXODUS|OEM)?$", ErrorMessage = "Label 은 Exodus 또는 OEM 이어야 합니다.")]
     public string? LABEL { get; set; }
 
@@ -92,6 +101,9 @@ public class InputNewManual
 
     [RegularExpression("^(LETTER|A4)$", ErrorMessage = "Page Size 값이 올바르지 않습니다.")]
     public string PAGE_SIZE { get; set; } = "LETTER";
+
+    [StringLength(20, ErrorMessage = "Version 은 20자 이내로 입력하세요.")]
+    public string? DOC_VERSION { get; set; } = "1.0";
 }
 
 public class InputManualHeader : InputNewManual

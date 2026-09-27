@@ -37,7 +37,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<NotifyRecipient> USP_S_SELECT_NOTIFY_RECIPIENT_LIST { get; set; } = null!;
     public DbSet<SectionTemplateItem> USP_S_SELECT_SECTION_TEMPLATE_LIST { get; set; } = null!;
     public DbSet<TemplateOptionItem> USP_S_SELECT_TEMPLATE_OPTION_LIST { get; set; } = null!;
-    public DbSet<UserRoleItem> USP_S_SELECT_USER_ROLE_LIST { get; set; } = null!;
+    public DbSet<UserAdminItem> USP_S_SELECT_USER_LIST { get; set; } = null!;
     public DbSet<SectionHistoryItem> USP_S_SELECT_SECTION_HISTORY { get; set; } = null!;
     public DbSet<CommonCodeItem> USP_S_SELECT_COMMON_CODE_LIST { get; set; } = null!;
 
@@ -58,7 +58,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<NotifyRecipient>().HasNoKey().ToView(null);
         modelBuilder.Entity<SectionTemplateItem>().HasNoKey().ToView(null);
         modelBuilder.Entity<TemplateOptionItem>().HasNoKey().ToView(null);
-        modelBuilder.Entity<UserRoleItem>().HasNoKey().ToView(null);
+        modelBuilder.Entity<UserAdminItem>().HasNoKey().ToView(null);
         modelBuilder.Entity<SectionHistoryItem>().HasNoKey().ToView(null);
         modelBuilder.Entity<CommonCodeItem>().HasNoKey().ToView(null);
     }

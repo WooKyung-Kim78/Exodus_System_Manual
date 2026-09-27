@@ -102,7 +102,7 @@ public class EditorController : BaseController<EditorController>
         if (denied is not null) return denied;
 
         var result = _db.ResultModel
-            .FromSqlRaw("EXECUTE dbo.USP_S_MERGE_SECTION {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}",
+            .FromSqlRaw("EXECUTE dbo.USP_S_MERGE_SECTION {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}",
                 (object?)input.SEC_ID ?? DBNull.Value,
                 input.M_ID,
                 input.TITLE,
@@ -112,6 +112,9 @@ public class EditorController : BaseController<EditorController>
                 (object?)input.SEC_STATUS ?? DBNull.Value,
                 (object?)input.STYLE_JSON ?? DBNull.Value,
                 input.TITLE_ALIGN,
+                input.SEC_TYPE,
+                (object?)input.SHOW_IN_TOC ?? DBNull.Value,
+                (object?)input.TITLE_UNDERLINE ?? DBNull.Value,
                 CurrentUserId!)
             .AsEnumerable().FirstOrDefault();
 

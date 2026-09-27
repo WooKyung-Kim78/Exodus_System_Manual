@@ -22,6 +22,12 @@ if (string.IsNullOrWhiteSpace(connectionString))
 
 builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseSqlServer(connectionString));
 
+// Job Number(= datasheet NAME) 와 SPECIFICATIONS 는 exodus_datasheet DB 에서 읽는다.
+// 값이 없으면 같은 서버/DB 에 datasheet 프로시저가 있다고 보고 기본 연결을 쓴다.
+var datasheetConnectionString = builder.Configuration.GetConnectionString("DatasheetConnection");
+builder.Services.AddDbContext<DatasheetDbContext>(o => o.UseSqlServer(
+    string.IsNullOrWhiteSpace(datasheetConnectionString) ? connectionString : datasheetConnectionString));
+
 builder.Services.AddControllersWithViews()
     .AddJsonOptions(o => o.JsonSerializerOptions.PropertyNamingPolicy = null)
     .AddRazorRuntimeCompilation();
@@ -30,7 +36,9 @@ builder.Services.AddDistributedMemoryCache();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddSingleton<HtmlSanitize>();
+builder.Services.AddSingleton<PdfRenderer>();
 builder.Services.AddScoped<SendMail>();
+builder.Services.AddScoped<DatasheetSpec>();
 
 // ajaxSetting.js 가 이 헤더로 토큰을 실어 보낸다.
 builder.Services.AddAntiforgery(o => o.HeaderName = "RequestVerificationToken");

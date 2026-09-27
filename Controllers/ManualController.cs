@@ -1,10 +1,15 @@
+using System.Net;
 using ExodusSystemManual.Controllers.Attributes;
 using ExodusSystemManual.Controllers.Common;
 using ExodusSystemManual.Data;
 using ExodusSystemManual.Models;
 using ExodusSystemManual.Utils;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewEngines;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Playwright;
 
 namespace ExodusSystemManual.Controllers;
 
@@ -13,6 +18,9 @@ public class ManualController : BaseController<ManualController>
 {
     private readonly SendMail _mail;
     private readonly HtmlSanitize _sanitizer;
+    private readonly DatasheetSpec _datasheet;
+    private readonly PdfRenderer _pdf;
+    private readonly ICompositeViewEngine _viewEngine;
 
     public ManualController(
         ApplicationDbContext db,
@@ -20,11 +28,17 @@ public class ManualController : BaseController<ManualController>
         ILogger<ManualController> logger,
         IConfiguration config,
         SendMail mail,
-        HtmlSanitize sanitizer)
+        HtmlSanitize sanitizer,
+        DatasheetSpec datasheet,
+        PdfRenderer pdf,
+        ICompositeViewEngine viewEngine)
         : base(db, env, logger, config)
     {
         _mail = mail;
         _sanitizer = sanitizer;
+        _datasheet = datasheet;
+        _pdf = pdf;
+        _viewEngine = viewEngine;
     }
 
     /* ================= 페이지 ================= */
@@ -57,8 +71,61 @@ public class ManualController : BaseController<ManualController>
         if (access is null) return NotFound();
         if (access.CAN_READ != "Y") return Redirect("/auth/error403");
 
+        var model = BuildPreviewModel(mid);
+        return model is null ? NotFound() : View(model);
+    }
+
+    [AjaxAuth]
+    [HttpGet("pdf")]
+    public async Task<IActionResult> Pdf(string mid, CancellationToken ct)
+    {
+        var access = GetManualAccess(mid);
+        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
+        if (access.CAN_READ != "Y") return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+
+        var model = BuildPreviewModel(mid);
+        if (model is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
+
+        byte[] pdf;
+        try
+        {
+            // 1차로 제목이 찍힌 쪽을 알아낸 뒤 목차에 쪽 번호를 채워 다시 만든다. 목차 폭이 고정이라 쪽 배치는 바뀌지 않는다.
+            model.EmitTocMarks = true;
+            var draft = await RenderPdfAsync(model, ct);
+            model.TocPages = PdfTocMarks.Read(draft);
+            model.EmitTocMarks = false;
+            pdf = await RenderPdfAsync(model, ct);
+        }
+        catch (PlaywrightException ex)
+        {
+            _logger.LogError(ex, "PDF 생성 실패 ({MID})", mid);
+            return JsonFail(StatusCodes.Status500InternalServerError, "PDF 를 만들지 못했습니다.");
+        }
+
+        Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
+        return File(pdf, "application/pdf", model.FileName);
+    }
+
+    private async Task<byte[]> RenderPdfAsync(PreviewViewModel model, CancellationToken ct)
+    {
+        var html = await RenderViewToStringAsync("Pdf", model);
+
+        // 여백은 preview.css 의 @page 와 같아야 한다.
+        return await _pdf.RenderAsync(html, new PagePdfOptions
+        {
+            Format = model.Header.PAGE_SIZE == "A4" ? "A4" : "Letter",
+            PrintBackground = true,
+            DisplayHeaderFooter = true,
+            HeaderTemplate = "<span></span>",
+            FooterTemplate = BuildPdfFooter(model.Header.DOC_VERSION),
+            Margin = new Margin { Top = "20mm", Right = "20mm", Bottom = "18mm", Left = "20mm" },
+        }, ct);
+    }
+
+    private PreviewViewModel? BuildPreviewModel(string mid)
+    {
         var header = LoadHeader(mid);
-        if (header is null) return NotFound();
+        if (header is null) return null;
 
         var sections = _db.USP_S_SELECT_SECTION_LIST
             .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_SECTION_LIST {0}, {1}", mid, CurrentUserId!)
@@ -77,17 +144,49 @@ public class ManualController : BaseController<ManualController>
             .AsEnumerable()
             .ToDictionary(c => c.CODE, c => c.NAME);
 
-        return View(new PreviewViewModel
+        // SPECIFICATIONS 목차는 저장된 내용이 아니라 PDF 를 만들 때 datasheet 에서 그때그때 읽는다.
+        var specSection = sections.FirstOrDefault(s => DatasheetSpec.IsSpecSection(s.TITLE));
+        var spec = specSection is null ? null : LoadSpec(header).spec;
+
+        return new PreviewViewModel
         {
             Header = header,
             Sections = sections,
             Blocks = blocks.GroupBy(b => b.SEC_ID)
                            .ToDictionary(g => g.Key, g => g.OrderBy(b => b.ORDER_NUM).ToList()),
             HeadingStyles = PreviewViewModel.ParseStyles(header.HEADING_STYLE_JSON),
+            SpecSecId = specSection?.SEC_ID,
+            SpecHtml = spec is null ? null : _sanitizer.Clean(DatasheetSpec.BuildHtml(spec)),
+            SpecHtmlMarked = spec is null ? null : _sanitizer.Clean(DatasheetSpec.BuildHtml(spec, markCategories: true)),
+            SpecCategories = spec?.Categories.Select(DatasheetSpec.TocTitle).ToList() ?? new List<string>(),
             CoverTitle1 = cover.GetValueOrDefault("TITLE_LINE1", string.Empty),
             CoverTitle2 = cover.GetValueOrDefault("TITLE_LINE2", string.Empty),
             CoverLogoPath = cover.GetValueOrDefault("LOGO_PATH"),
-        });
+        };
+    }
+
+    // "1 | Page - Ver. 1.0" — 쪽 번호만 굵게. 템플릿은 페이지의 웹 글꼴을 못 쓰므로 기본 글꼴로 찍는다.
+    private static string BuildPdfFooter(string? version)
+    {
+        var tail = " | Page" + (string.IsNullOrWhiteSpace(version) ? "" : "  -  Ver. " + WebUtility.HtmlEncode(version));
+        return "<div style=\"width:100%;box-sizing:border-box;padding:0 20mm;margin-bottom:5mm;"
+             + "font-family:Helvetica,Arial,sans-serif;font-size:9pt;color:#464646;"
+             + "letter-spacing:0.35mm;white-space:pre;\">"
+             + "<span class=\"pageNumber\" style=\"font-weight:700;\"></span>" + tail
+             + "</div>";
+    }
+
+    private async Task<string> RenderViewToStringAsync(string viewName, object model)
+    {
+        var found = _viewEngine.FindView(ControllerContext, viewName, isMainPage: true);
+        if (!found.Success)
+            throw new InvalidOperationException($"뷰를 찾을 수 없습니다: {viewName}");
+
+        ViewData.Model = model;
+        await using var writer = new StringWriter();
+        var context = new ViewContext(ControllerContext, found.View, ViewData, TempData, writer, new HtmlHelperOptions());
+        await found.View.RenderAsync(context);
+        return writer.ToString();
     }
 
     /* ================= 목록 / 헤더 ================= */
@@ -119,7 +218,7 @@ public class ManualController : BaseController<ManualController>
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 
         var result = _db.ResultModel
-            .FromSqlRaw("EXECUTE dbo.USP_S_INSERT_MANUAL {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}",
+            .FromSqlRaw("EXECUTE dbo.USP_S_INSERT_MANUAL {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}",
                 (object?)input.JOB_NUMBER ?? DBNull.Value,
                 input.MODEL_NAME,
                 (object?)input.LABEL ?? DBNull.Value,
@@ -127,14 +226,16 @@ public class ManualController : BaseController<ManualController>
                 (object?)input.OPTION_TEXT ?? DBNull.Value,
                 input.PAGE_SIZE,
                 DBNull.Value,
-                CurrentUserId!)
+                CurrentUserId!,
+                (object?)input.PROCESS_ID ?? DBNull.Value,
+                (object?)input.DOC_VERSION ?? DBNull.Value)
             .AsEnumerable()
             .FirstOrDefault();
 
         if (result is null || result.Success == 0)
             return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "문서를 생성하지 못했습니다.");
 
-        return JsonOk(new { M_ID = result.ReturnMsg });
+        return JsonOk(new { M_ID = result.ReturnMsg! });
     }
 
     [AjaxAuth]
@@ -171,7 +272,7 @@ public class ManualController : BaseController<ManualController>
         if (denied is not null) return denied;
 
         var result = _db.ResultModel
-            .FromSqlRaw("EXECUTE dbo.USP_S_UPDATE_MANUAL_HEADER {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}",
+            .FromSqlRaw("EXECUTE dbo.USP_S_UPDATE_MANUAL_HEADER {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}",
                 input.M_ID,
                 (object?)input.JOB_NUMBER ?? DBNull.Value,
                 input.MODEL_NAME,
@@ -179,7 +280,9 @@ public class ManualController : BaseController<ManualController>
                 (object?)input.COOLING ?? DBNull.Value,
                 (object?)input.OPTION_TEXT ?? DBNull.Value,
                 input.PAGE_SIZE,
-                CurrentUserId!)
+                CurrentUserId!,
+                (object?)input.PROCESS_ID ?? DBNull.Value,
+                (object?)input.DOC_VERSION ?? DBNull.Value)
             .AsEnumerable()
             .FirstOrDefault();
 
@@ -313,6 +416,46 @@ public class ManualController : BaseController<ManualController>
 
     /* ================= 조회용 ================= */
 
+    /// Job Number 선택 목록. exodus_datasheet 에서 발행된 datasheet 의 NAME 을 쓴다.
+    [AjaxAuth]
+    [HttpGet("datasheets")]
+    [Produces("application/json")]
+    public IActionResult GetDatasheets()
+    {
+        try
+        {
+            return JsonOk(new { list = _datasheet.GetPublishedOptions() });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "datasheet 목록을 불러오지 못했습니다.");
+            return JsonFail(StatusCodes.Status503ServiceUnavailable, "Datasheet 시스템에 연결하지 못했습니다.");
+        }
+    }
+
+    /// SPECIFICATIONS 목차에 그릴 datasheet 사양. 저장하지 않고 요청할 때마다 datasheet 에서 읽는다.
+    [AjaxAuth]
+    [HttpGet("spec")]
+    [Produces("application/json")]
+    public IActionResult GetSpec(string mid)
+    {
+        var access = GetManualAccess(mid);
+        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
+        if (access.CAN_READ != "Y") return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+
+        var header = LoadHeader(mid);
+        if (header is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
+
+        var (html, message) = LoadSpecHtml(header);
+        return JsonOk(new
+        {
+            html,
+            message,
+            jobNumber = header.JOB_NUMBER,
+            processId = header.PROCESS_ID,
+        });
+    }
+
     [AjaxAuth]
     [HttpGet("teams")]
     [Produces("application/json")]
@@ -368,4 +511,37 @@ public class ManualController : BaseController<ManualController>
         => result is null || result.Success == 0
             ? JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "요청을 처리하지 못했습니다.")
             : JsonOk();
+
+    /* ---------- datasheet 사양 → SPECIFICATIONS 목차 ---------- */
+
+    /// 저장된 PROCESS_ID 로 datasheet 의 category(머리말·꼬리말)와 parameter 를 읽어 HTML 로 만든다.
+    /// PROCESS_ID 가 없는 예전 문서는 Job Number 로 한 번 더 찾아본다.
+    private (string? html, string message) LoadSpecHtml(ManualHeader header)
+    {
+        var (spec, message) = LoadSpec(header);
+        return (spec is null ? null : _sanitizer.Clean(DatasheetSpec.BuildHtml(spec)), message);
+    }
+
+    private (DatasheetSpecResult? spec, string message) LoadSpec(ManualHeader header)
+    {
+        if (string.IsNullOrWhiteSpace(header.PROCESS_ID) && string.IsNullOrWhiteSpace(header.JOB_NUMBER))
+            return (null, "Job Number 를 먼저 선택하세요.");
+
+        DatasheetSpecResult? spec;
+        try
+        {
+            spec = _datasheet.GetSpecById(header.PROCESS_ID) ?? _datasheet.GetSpecByName(header.JOB_NUMBER);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "datasheet 사양을 불러오지 못했습니다. ({MID}, {JOB})", header.M_ID, header.JOB_NUMBER);
+            return (null, "Datasheet 시스템에 연결하지 못했습니다.");
+        }
+
+        if (spec is null || spec.Categories.Count == 0)
+            return (null, $"'{header.JOB_NUMBER}' datasheet 에서 가져올 사양이 없습니다.");
+
+        var rows = spec.Categories.Sum(c => c.ROWS.Count);
+        return (spec, $"'{spec.Datasheet.NAME}' 사양 {spec.Categories.Count}개 항목 · {rows}개 파라미터");
+    }
 }

@@ -52,9 +52,9 @@
                         <th class="ps-5" style="width:70px">순서</th>
                         <th style="width:90px">구분</th>
                         <th style="width:180px">적용 범위</th>
-                        <th style="width:80px">번호</th>
                         <th>제목</th>
                         <th style="width:90px">정렬</th>
+                        <th style="width:90px">목차 표시</th>
                         <th style="width:180px">담당 팀</th>
                         <th class="text-end pe-5" style="width:190px">관리</th>
                     </tr>
@@ -68,14 +68,25 @@
                             </span>
                         </td>
                         <td class="fs-8 text-muted">{{ scopeLabel(t) }}</td>
-                        <td class="text-muted">{{ t.SEC_NO }}</td>
                         <td>
-                            <span :class="'tpl-title lv' + t.SEC_LEVEL">{{ t.TITLE }}</span>
-                            <span class="badge badge-light fs-9 ms-2">{{ levelLabel(t.SEC_LEVEL) }}</span>
+                            <template v-if="t.SEC_TYPE === 'PAGEBREAK'">
+                                <span class="badge badge-light-info">— 페이지 나눔 —</span>
+                            </template>
+                            <template v-else>
+                                <span :class="'tpl-title lv' + t.SEC_LEVEL"
+                                      :style="{ textDecoration: t.TITLE_UNDERLINE === 'Y' ? 'underline' : 'none' }">{{ t.TITLE }}</span>
+                                <span class="badge badge-light fs-9 ms-2">{{ levelLabel(t.SEC_LEVEL) }}</span>
+                            </template>
                         </td>
-                        <td class="fs-8 text-muted">{{ alignLabel(t.TITLE_ALIGN) }}</td>
+                        <td class="fs-8 text-muted">{{ t.SEC_TYPE === 'PAGEBREAK' ? '-' : alignLabel(t.TITLE_ALIGN) }}</td>
                         <td class="fs-8">
-                            <span v-if="t.ASSIGNED_TEAM">{{ t.ASSIGNED_TEAM }}</span>
+                            <span v-if="t.SEC_TYPE === 'PAGEBREAK'" class="text-muted">-</span>
+                            <span v-else-if="t.SHOW_IN_TOC === 'N'" class="badge badge-light-warning fs-9">숨김</span>
+                            <span v-else class="text-muted">표시</span>
+                        </td>
+                        <td class="fs-8">
+                            <span v-if="t.SEC_TYPE === 'PAGEBREAK'" class="text-muted">-</span>
+                            <span v-else-if="t.ASSIGNED_TEAM">{{ t.ASSIGNED_TEAM }}</span>
                             <span v-else class="text-muted">미지정</span>
                         </td>
                         <td class="text-end pe-5">
@@ -95,13 +106,25 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">{{ form.TPL_ID ? '목차 수정' : '목차 추가' }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" @@click="closeForm"></button>
                 </div>
                 <div class="modal-body">
                     <div v-if="formError" class="alert alert-danger py-3">{{ formError }}</div>
 
                     <div class="row g-6">
                         <div class="col-lg-5">
+                            <div class="mb-4">
+                                <label class="form-label required">종류</label>
+                                <select class="form-select" v-model="form.SEC_TYPE" :disabled="!!form.TPL_ID">
+                                    <option value="NORMAL">일반 목차</option>
+                                    <option value="PAGEBREAK">페이지 나눔</option>
+                                </select>
+                                <div class="form-text">
+                                    페이지 나눔은 제목과 내용 없이 PDF 에서 그 자리를 새 페이지로 끊습니다.
+                                    종류는 만든 뒤에 바꿀 수 없습니다.
+                                </div>
+                            </div>
+
                             <div class="row g-4 mb-4">
                                 <div class="col-6">
                                     <label class="form-label">Label</label>
@@ -122,7 +145,7 @@
                             </div>
 
                             <div class="row g-4 mb-4">
-                                <div class="col-6">
+                                <div class="col-6" v-if="!isPageBreak">
                                     <label class="form-label required">제목 단계</label>
                                     <select class="form-select" v-model.number="form.SEC_LEVEL">
                                         <option :value="1">대제목</option>
@@ -139,43 +162,62 @@
                                 </div>
                             </div>
 
-                            <div class="mb-4">
-                                <label class="form-label">번호</label>
-                                <input type="text" class="form-control" v-model.trim="form.SEC_NO" maxlength="20" placeholder="예: 1  /  1.1  /  1.1.1" />
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label required">제목</label>
-                                <input type="text" class="form-control" v-model.trim="form.TITLE" maxlength="200" />
-                            </div>
-                            <div>
-                                <label class="form-label required">제목 가로 정렬</label>
-                                <select class="form-select" v-model="form.TITLE_ALIGN">
-                                    <option value="LEFT">왼쪽</option>
-                                    <option value="CENTER">가운데</option>
-                                    <option value="RIGHT">오른쪽</option>
-                                </select>
-                                <div class="form-text">
-                                    문서 제목 스타일(크기·글자색·굵기·밑줄)과 별개로 동작합니다.
+                            <template v-if="!isPageBreak">
+                                <!-- 번호(SEC_NO)는 지금 쓰지 않아 숨겼다. 값은 그대로 남아 있다. -->
+                                <div class="mb-4">
+                                    <label class="form-label required">제목</label>
+                                    <input type="text" class="form-control" v-model.trim="form.TITLE" maxlength="200" />
                                 </div>
-                                <div class="mt-3 p-3 bg-light rounded" :style="{ textAlign: alignCss(form.TITLE_ALIGN) }">
-                                    <span v-if="form.SEC_NO" class="me-2">{{ form.SEC_NO }}</span>{{ form.TITLE || '미리보기' }}
+                                <div class="row g-4 mb-4">
+                                    <div class="col-6">
+                                        <label class="form-label required">제목 가로 정렬</label>
+                                        <select class="form-select" v-model="form.TITLE_ALIGN">
+                                            <option value="LEFT">왼쪽</option>
+                                            <option value="CENTER">가운데</option>
+                                            <option value="RIGHT">오른쪽</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label required">제목 밑줄</label>
+                                        <select class="form-select" v-model="form.TITLE_UNDERLINE">
+                                            <option value="N">없음</option>
+                                            <option value="Y">사용</option>
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
+                                <div class="mb-4">
+                                    <div class="form-text mb-2">
+                                        문서 제목 스타일(크기·글자색·굵기)과 별개로 동작합니다.
+                                    </div>
+                                    <div class="p-3 bg-light rounded"
+                                         :style="{ textAlign: alignCss(form.TITLE_ALIGN), textDecoration: form.TITLE_UNDERLINE === 'Y' ? 'underline' : 'none' }">
+                                        {{ form.TITLE || '미리보기' }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="form-label required">목차 페이지 표시</label>
+                                    <select class="form-select" v-model="form.SHOW_IN_TOC">
+                                        <option value="Y">목차에 보임</option>
+                                        <option value="N">목차에서 숨김</option>
+                                    </select>
+                                    <div class="form-text">숨겨도 본문에는 그대로 나옵니다.</div>
+                                </div>
 
-                            <div class="separator my-4"></div>
+                                <div class="separator my-4"></div>
 
-                            <div>
-                                <label class="form-label">담당 팀</label>
-                                <select class="form-select" v-model="form.ASSIGNED_TEAM">
-                                    <option value="">미지정</option>
-                                    <option v-for="t in teams" :key="t.DIVISION + '/' + t.TEAM" :value="t.TEAM">{{ t.DIVISION }} / {{ t.TEAM }}</option>
-                                </select>
-                                <div class="form-text">
-                                    지정한 팀은 문서가 생길 때 목차 담당 팀으로 복사됩니다.
+                                <div>
+                                    <label class="form-label">담당 팀</label>
+                                    <select class="form-select" v-model="form.ASSIGNED_TEAM">
+                                        <option value="">미지정</option>
+                                        <option v-for="t in teams" :key="t.DIVISION + '/' + t.TEAM" :value="t.TEAM">{{ t.DIVISION }} / {{ t.TEAM }}</option>
+                                    </select>
+                                    <div class="form-text">
+                                        지정한 팀은 문서가 생길 때 목차 담당 팀으로 복사됩니다.
+                                    </div>
                                 </div>
-                            </div>
+                            </template>
                         </div>
-                        <div class="col-lg-7 border-lg-start">
+                        <div class="col-lg-7 border-lg-start" v-if="!isPageBreak">
                             <label class="form-label">기본 내용</label>
                             <div class="tpl-content-editor-wrap">
                                 <div v-if="contentEditorLoading" class="tpl-content-editor-loading">내용을 불러오는 중...</div>
@@ -186,7 +228,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-light" @@click="closeForm">취소</button>
                     <button type="button" class="btn btn-primary" :disabled="saving" @@click="save">저장</button>
                 </div>
             </div>
@@ -197,6 +239,10 @@
 @section css {
     <link rel="stylesheet" href="~/assets/plugins/custom/ckeditor/ckeditor5.min.css" />
     <style>
+        /* CKEditor 의 드롭다운·표 속성 창은 body 에 붙는다. 기본 z-index(1000)가
+           모달 배경(1050)보다 낮아 클릭이 배경에 먹힌다. 모달 위로 올린다. */
+        :root { --ck-z-panel: 1200; --ck-z-modal: 1200; }
+
         .tpl-title.lv2 { padding-left: 1.25rem; color: #3f4254; }
         .tpl-title.lv3 { padding-left: 2.5rem; color: #5e6278; }
         .min-h-200 { min-height: 200px; }

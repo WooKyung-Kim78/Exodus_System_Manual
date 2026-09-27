@@ -1,0 +1,198 @@
+@{
+    ViewData["Title"] = "사용자 관리";
+}
+
+<div class="container-fluid" id="app" v-cloak>
+    <div class="d-flex align-items-center justify-content-between mb-5">
+        <div>
+            <h1 class="h4 mb-1">사용자 관리</h1>
+            <div class="text-muted fs-7">계정 등록·수정, 역할과 로그인 상태를 여기서 관리합니다.</div>
+        </div>
+        <div class="d-flex gap-2">
+            <input type="text" class="form-control form-control-sm w-250px" placeholder="이름 · 아이디 · 이메일 · 팀 검색"
+                   v-model.trim="keyword" @@keyup.enter="callList" />
+            <select class="form-select form-select-sm w-100px" v-model="view" @@change="callList">
+                <option value="USE">사용</option>
+                <option value="DEL">삭제</option>
+            </select>
+            <button class="btn btn-sm btn-light-primary" @@click="callList">검색</button>
+            <button class="btn btn-sm btn-primary" v-if="view === 'USE'" @@click="openForm(null)">+ 사용자 등록</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div v-if="loading" class="text-center text-muted py-15">불러오는 중...</div>
+            <div v-else-if="!list.length" class="text-center text-muted py-15">
+                {{ view === 'DEL' ? '삭제된 사용자가 없습니다.' : '사용자가 없습니다.' }}
+            </div>
+            <table v-else class="table table-row-bordered align-middle mb-0">
+                <thead class="fw-bold fs-8 text-muted bg-light">
+                    <tr>
+                        <th class="ps-5">이름</th>
+                        <th style="width:150px">아이디</th>
+                        <th style="width:220px">이메일</th>
+                        <th style="width:200px">소속</th>
+                        <th style="width:110px">역할</th>
+                        <th style="width:100px">상태</th>
+                        <th class="text-end pe-5" style="width:230px">관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="u in list" :key="u.USER_ID">
+                        <td class="ps-5 fw-bold">
+                            {{ u.FULL_NAME }}
+                            <div v-if="u.SUPERVISOR_NAME" class="text-muted fs-8 fw-normal">상급자 {{ u.SUPERVISOR_NAME }}</div>
+                        </td>
+                        <td class="text-muted fs-8">{{ u.USER_ID }}</td>
+                        <td class="text-muted fs-8">{{ u.EMAIL || '-' }}</td>
+                        <td class="text-muted fs-8">{{ u.DIVISION }} <span v-if="u.TEAM">/ {{ u.TEAM }}</span></td>
+                        <td class="fs-8">{{ roleLabel(u.ROLE_NAME) }}</td>
+                        <td>
+                            <span :class="statusClass(u.AUTHORIZED)">{{ statusLabel(u.AUTHORIZED) }}</span>
+                        </td>
+                        <td class="text-end pe-5">
+                            <template v-if="view === 'DEL'">
+                                <button class="btn btn-sm btn-light-primary py-1 px-2"
+                                        :disabled="busy === u.USER_ID" @@click="restore(u)">복구</button>
+                            </template>
+                            <template v-else>
+                                <button v-if="u.AUTHORIZED !== 'Y'" class="btn btn-sm btn-light-success py-1 px-2"
+                                        :disabled="busy === u.USER_ID" @@click="setStatus(u, 'Y')">승인</button>
+                                <button class="btn btn-sm btn-light py-1 px-2" @@click="openForm(u)">수정</button>
+                                <button class="btn btn-sm btn-light py-1 px-2" @@click="openPassword(u)">비밀번호</button>
+                                <button class="btn btn-sm btn-light-danger py-1 px-2"
+                                        :disabled="busy === u.USER_ID" @@click="remove(u)">삭제</button>
+                            </template>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <datalist id="divisionOptions">
+        <option v-for="d in divisions" :key="d" :value="d"></option>
+    </datalist>
+    <datalist id="teamOptions">
+        <option v-for="t in teamOptions" :key="t" :value="t"></option>
+    </datalist>
+
+    <div class="modal fade" tabindex="-1" id="userModal">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ isNew ? '사용자 등록' : '사용자 수정' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div v-if="formError" class="alert alert-danger py-3">{{ formError }}</div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-6">
+                            <label class="form-label required">아이디</label>
+                            <input type="text" class="form-control" v-model.trim="form.USER_ID"
+                                   :disabled="!isNew" maxlength="20" placeholder="영문·숫자 4~20자" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label required">이름</label>
+                            <input type="text" class="form-control" v-model.trim="form.FULL_NAME" maxlength="100" />
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">이메일</label>
+                        <input type="email" class="form-control" v-model.trim="form.EMAIL" maxlength="100"
+                               placeholder="알림 메일을 받을 주소" />
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-6">
+                            <label class="form-label">본부</label>
+                            <input type="text" class="form-control" list="divisionOptions"
+                                   v-model.trim="form.DIVISION" maxlength="100" placeholder="직접 입력하거나 목록에서 선택" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">팀</label>
+                            <input type="text" class="form-control" list="teamOptions"
+                                   v-model.trim="form.TEAM" maxlength="100" placeholder="직접 입력하거나 목록에서 선택" />
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-4">
+                            <label class="form-label required">역할</label>
+                            <select class="form-select" v-model="form.ROLE_NAME">
+                                <option value="ADMIN">관리자</option>
+                                <option value="USER">유저</option>
+                                <option value="READER">읽기전용</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label required">계정 상태</label>
+                            <select class="form-select" v-model="form.AUTHORIZED">
+                                <option value="Y">승인</option>
+                                <option value="S">미승인</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">상급자</label>
+                            <select class="form-select" v-model="form.SUPERVISOR_USER_ID">
+                                <option :value="null">지정 안 함</option>
+                                <option v-for="s in supervisors" :key="s.USER_ID" :value="s.USER_ID">
+                                    {{ s.FULL_NAME }} ({{ s.USER_ID }})
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div v-if="isNew">
+                        <label class="form-label required">초기 비밀번호</label>
+                        <input type="password" class="form-control" v-model="form.N_PASSWORD"
+                               maxlength="50" autocomplete="new-password" />
+                        <div class="form-text">8자 이상, 영문·숫자·특수문자를 각각 1자 이상 포함해야 합니다.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" :disabled="saving" @@click="save">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" tabindex="-1" id="passwordModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">비밀번호 재설정</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div v-if="pwError" class="alert alert-danger py-3">{{ pwError }}</div>
+                    <div class="text-muted fs-8 mb-4">{{ pwForm.FULL_NAME }} ({{ pwForm.USER_ID }})</div>
+
+                    <div class="mb-4">
+                        <label class="form-label required">새 비밀번호</label>
+                        <input type="password" class="form-control" v-model="pwForm.N_PASSWORD"
+                               maxlength="50" autocomplete="new-password" />
+                    </div>
+                    <div>
+                        <label class="form-label required">새 비밀번호 확인</label>
+                        <input type="password" class="form-control" v-model="pwForm.C_PASSWORD"
+                               maxlength="50" autocomplete="new-password" />
+                    </div>
+                    <div class="form-text mt-2">8자 이상, 영문·숫자·특수문자를 각각 1자 이상 포함해야 합니다.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" :disabled="pwSaving" @@click="savePassword">변경</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/js/custom/admin/users.js" asp-append-version="true"></script>
+}

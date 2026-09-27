@@ -16,7 +16,7 @@
 | 데이터베이스 | SQL Server |
 | 프런트엔드 | Vue 2.7 (전역 스크립트), jQuery, Bootstrap 5, Metronic 8 |
 | 본문 편집기 | CKEditor 5 (ESM 빌드, import map 으로 로드) |
-| PDF | html2pdf (브라우저에서 생성) |
+| PDF | Microsoft.Playwright (서버에서 Headless Chromium 으로 생성) |
 | 메일 | MailKit |
 | HTML 정제 | HtmlSanitizer (Ganss.Xss) |
 
@@ -49,8 +49,9 @@ Razor 런타임 컴파일을 켜 두어 `.cshtml` 수정은 새로고침만으�
 15_section_history.sql         목차 수정 이력 조회
 16_cover_page.sql              표지 구성 (로고·고정 문구·제품 이미지)
 17_body_font.sql               본문 글꼴
-18_body_spacing.sql            행간·자간, 글자 크기 12pt 고정
+18_body_spacing.sql            행간·자간, 글자 크기 고정
 19_font_calibri.sql            Calibri 추가
+28_font_carlito.sql            본문 글꼴 Calibri → Carlito (오픈 라이선스)
 ```
 
 > 05 번은 테스트 계정입니다. 운영 환경에 올리기 전에 삭제하거나 비밀번호를 교체하세요.
@@ -65,6 +66,15 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" `
 ```
 
 `Encrypt=True` 는 필수입니다. 자체 서명 인증서를 쓰는 서버라면 `TrustServerCertificate=True` 도 함께 지정합니다.
+
+Job Number 목록과 SPECIFICATIONS 사양은 exodus_datasheet DB 의 `USP_DS_SELECT_MAIN_PUBLISHED`,
+`USP_DS_SELECT_DATASHEET_DETAIL` 에서 읽습니다. 다른 DB 에 있다면 아래도 등록합니다.
+등록하지 않으면 `DefaultConnection` 을 그대로 사용합니다.
+
+```powershell
+dotnet user-secrets set "ConnectionStrings:DatasheetConnection" `
+  "Server=<호스트>;Database=exodus_datasheet;User ID=<계정>;Password=<비밀번호>;Encrypt=True;TrustServerCertificate=True"
+```
 
 ### 3. 관리자 비밀번호
 
@@ -137,8 +147,8 @@ Label(Exodus/OEM) · Cooling(Air/Liquid) 조합별로 목차를 미리 정의합
 
 | 항목 | 값 |
 |---|---|
-| 본문 글꼴 | Arial · Calibri · Verdana · Tahoma · Georgia · Times New Roman |
-| 본문 글자 크기 | 12pt 고정 (편집기에서 변경 불가) |
+| 본문 글꼴 | Arial · Carlito(Calibri 호환) · Verdana · Tahoma · Georgia · Times New Roman (기본 Carlito) |
+| 본문 글자 크기 | 10pt 고정 (편집기에서 변경 불가) |
 | 행간 | 1.0 ~ 3.0 |
 | 자간 | -1.0 ~ 3.0px |
 | 제목 스타일 | 대/중/소제목별 크기·색·굵기·밑줄 |
@@ -154,7 +164,13 @@ Label(Exodus/OEM) · Cooling(Air/Liquid) 조합별로 목차를 미리 정의합
 표지의 로고와 고정 문구는 `Admin › Common Codes` 의 `COVER` 분류에서 관리하고,
 제품 사진은 문서마다 따로 올립니다.
 
-> PDF 는 서버가 아니라 **브라우저에서** 만들어집니다. 생성하는 PC 에 해당 글꼴이 설치되어 있어야 그대로 출력됩니다.
+> PDF 는 **서버에서** Chromium 으로 만들어져 글자가 벡터로 들어갑니다(확대·검색·복사 가능).
+> 브라우저는 `appsettings.json` 의 `PDF:BROWSER_CHANNEL` 로 고릅니다.
+> `msedge`(기본) / `chrome` 은 서버에 설치된 브라우저를 쓰고, 비우면 Playwright 전용 Chromium 을 씁니다.
+> 전용 Chromium 은 빌드 후 `pwsh bin/Debug/net8.0/playwright.ps1 install chromium` 으로 한 번 설치합니다.
+>
+> Carlito 는 웹 글꼴(`wwwroot/assets/fonts/carlito`, SIL OFL 1.1)라 서버에 설치하지 않아도 됩니다.
+> Arial 등 나머지 글꼴과 한글(맑은 고딕)은 PDF 를 만드는 서버에 설치된 글꼴을 씁니다.
 
 ### 수정 이력
 

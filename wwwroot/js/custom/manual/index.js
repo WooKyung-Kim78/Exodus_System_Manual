@@ -29,7 +29,7 @@ new Vue({
         saving: false,
         list: [],
         filter: { status: '', onlyMine: false },
-        form: { MODEL_NAME: '', JOB_NUMBER: '', LABEL: '', COOLING: '', OPTION_TEXT: '', PAGE_SIZE: 'LETTER' },
+        form: { MODEL_NAME: '', JOB_NUMBER: '', PROCESS_ID: '', LABEL: '', COOLING: '', OPTION_TEXT: '', PAGE_SIZE: 'LETTER', DOC_VERSION: '1.0' },
         formError: '',
     },
     created: function () {
@@ -56,9 +56,13 @@ new Vue({
                 .always(function () { self.loading = false; });
         },
         openNew: function () {
-            this.form = { MODEL_NAME: '', JOB_NUMBER: '', LABEL: '', COOLING: '', OPTION_TEXT: '', PAGE_SIZE: 'LETTER' };
+            this.form = { MODEL_NAME: '', JOB_NUMBER: '', PROCESS_ID: '', LABEL: '', COOLING: '', OPTION_TEXT: '', PAGE_SIZE: 'LETTER', DOC_VERSION: '1.0' };
             this.formError = '';
             this.modal('newManualModal').show();
+        },
+        // datasheet 의 PROCESS_ID 를 같이 저장해야 나중에 사양을 다시 읽을 수 있다.
+        pickDatasheet: function (item) {
+            this.form.PROCESS_ID = item ? item.D_ID : '';
         },
         submitNew: function () {
             var self = this;
