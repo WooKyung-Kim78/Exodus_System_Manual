@@ -1,0 +1,12 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { api } from '../api/client'
+import type { ManualHeader, ManualSection } from '../api/types'
+const route = useRoute(); const router = useRouter(); const mid = computed(() => typeof route.query.mid === 'string' ? route.query.mid : '')
+const header = ref<ManualHeader | null>(null); const sections = ref<ManualSection[]>([]); const error = ref(''); const loading = ref(false)
+async function load() { if (!mid.value) return; loading.value = true; try { const data = await api<{ header: ManualHeader; sections: ManualSection[] }>(`/api/manual/find?mid=${encodeURIComponent(mid.value)}`); header.value = data.header; sections.value = data.sections } catch (e) { error.value = e instanceof Error ? e.message : '문서를 불러오지 못했습니다.' } finally { loading.value = false } }
+async function create() { try { const data = await api<{ M_ID: string }>('/api/manual/create', { method: 'POST', body: JSON.stringify({ MODEL_NAME: '새 문서', PAGE_SIZE: 'LETTER' }) }); await router.replace({ path: '/manual/detail', query: { mid: data.M_ID } }); await load() } catch (e) { error.value = e instanceof Error ? e.message : '문서를 만들지 못했습니다.' } }
+onMounted(load)
+</script>
+<template><section><div class="page-title"><div><h1>{{ header?.MODEL_NAME ?? '새 문서' }}</h1><p v-if="header">{{ header.DOC_NUM }} · Rev {{ header.REVISION }} · {{ header.STATUS }}</p></div><div class="actions" v-if="mid"><RouterLink class="button secondary" :to="{ path: '/manual/preview', query: { mid } }">미리보기</RouterLink><RouterLink class="button" :to="{ path: '/editor', query: { mid } }">편집기</RouterLink></div></div><p v-if="error" class="error">{{ error }}</p><div v-else-if="!mid" class="empty"><p>새 문서를 생성합니다.</p><button @click="create">문서 생성</button></div><div v-else-if="loading">불러오는 중…</div><template v-else-if="header"><dl class="details"><dt>Model Name</dt><dd>{{ header.MODEL_NAME }}</dd><dt>Job Number</dt><dd>{{ header.JOB_NUMBER || '-' }}</dd><dt>Page Size</dt><dd>{{ header.PAGE_SIZE }}</dd><dt>Option</dt><dd>{{ header.OPTION_TEXT || '-' }}</dd></dl><h2>목차</h2><ol class="sections"><li v-for="section in sections" :key="section.SEC_ID" :style="{ marginLeft: `${(section.SEC_LEVEL - 1) * 1.5}rem` }">{{ section.SEC_NO }} {{ section.TITLE }} <small>{{ section.ASSIGNED_TEAM }}</small></li></ol></template></section></template>

@@ -1,0 +1,219 @@
+# 프런트 전면 개편 작업 계획 (에이전트 지시서)
+
+작성 기준: 2026-09-30 시점 코드 + docs/known-issues.md.
+이 문서는 **다른 에이전트에게 작업을 지시하기 위한 것**이다. 착수 전 AGENTS.md 와 docs/ 를 먼저 읽는다 (문서와 코드가 다르면 코드가 맞다).
+
+## 0. 목표와 확정된 결정
+
+| 항목                        | 결정                                                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| jQuery, Bootstrap, Metronic | **완전 제거** (`wwwroot/assets/**`, `wwwroot/lib/**`, DataTables, jquery-toast 포함)                                            |
+| Razor                       | **사용하지 않는다.** `.cshtml`, `AddControllersWithViews`, `AddRazorRuntimeCompilation`, `ICompositeViewEngine` 전부 제거       |
+| 런타임                      | **Node 24** (`web/.nvmrc`, `package.json` `engines` 에 명시. CI·README 도 24)                                                   |
+| 프레임워크                  | Vue 3 (`<script setup>`) + TypeScript + Vite                                                                                    |
+| 편집기                      | **CKEditor 5 Vue 3 공식 컴포넌트로 전환** (`@ckeditor/ckeditor5-vue` + npm `ckeditor5`, 무료 GPL 버전)                          |
+| 구조                        | **SPA** (vue-router 사용). 서버는 JSON API + 정적 파일 + PDF 생성                                                               |
+| 스타일                      | Tailwind v4 + 자체 디자인 토큰(CSS 변수) + Reka UI(headless)                                                                    |
+| E2E                         | Playwright(`@playwright/test`). **개발 서버가 이미 떠 있다는 전제**로 실행 (webServer 옵션 사용 안 함)                          |
+| 개발 서버 로그인            | Development 환경 전용 자동 로그인 (5장)                                                                                         |
+| 유지                        | DB 접근은 저장 프로시저만, 서버가 권한 결정, `HtmlSanitize.Clean` 경유, `Database/NN_*.sql` 불변 등 AGENTS.md 의 절대 규칙 전부 |
+
+Razor 를 없애면서 **"페이지 게이트 / 서버 값 주입 / 문서 렌더링(PDF)" 세 가지가 함께 바뀐다.** 아래 2~4장이 그 검토 결과다.
+
+## 1. 저장소 구조 (목표)
+
+```
+web/                       # Vite 프로젝트 (신규). 화면 소스는 전부 여기
+  src/
+    app/                   # main.ts, router, 전역 가드
+    api/                   # HTTP 클라이언트 + 엔드포인트별 함수 + DTO 타입
+    design-system/         # 토큰, 기본 컴포넌트, /dev/styleguide 화면
+    features/<영역>/       # auth, manual, editor, admin ...
+    stores/                # Pinia (세션 사용자 등 최소한만)
+  e2e/                     # Playwright
+  tests/                   # Vitest
+Controllers/               # JSON API 전용 (View 반환 없음)
+wwwroot/app/               # Vite 빌드 산출물 (커밋 제외). base='/app/'
+wwwroot/css, assets/fonts  # 문서(미리보기/PDF)용 CSS·Carlito 폰트만 남긴다 (6장)
+```
+
+- `ExodusSystemManual.csproj` 가 `web/**` 를 컴파일·게시 대상에서 제외하도록 한다 (`tests\**` 제외와 같은 방식). 게시(publish) 시 `npm ci && npm run build` 를 수행하는 타깃을 둔다.
+- 서버는 `wwwroot/app/index.html` 을 SPA 폴백으로 서빙한다: `/api/**`, 확장자 있는 요청(정적 파일), `/Upload/**` 는 제외하고 나머지 GET 은 `index.html`. Program.cs 에 `MapFallbackToFile` 로 추가.
+- 개발: Vite dev server(:5173, HMR) 가 `/api`, `/Upload` 를 `https://localhost:7177` 로 프록시한다 (쿠키·Antiforgery 가 같은 origin 으로 보이게).
+
+## 2. 서버 계약 변경 (Razor 제거의 직접 영향)
+
+### 2-1. URL 재편
+
+- **모든 JSON 액션은 `/api/...` 아래로 옮긴다.** 지금은 `/manual` 이 페이지, `/manual/list` 가 API 라 SPA 라우트와 충돌한다.
+- SPA 라우트는 기존 URL 을 **그대로 유지**해 북마크가 깨지지 않게 한다: `/`, `/manual`, `/manual/detail?mid=`, `/manual/preview?mid=`, `/editor?...`, `/admin/user`, `/admin/code`, `/admin/setting`, `/admin/section-template`, `/auth/sign-in`, `/auth/error403`, `/auth/error404`.
+- 신규 `docs/architecture/api-routes.md` 에 **구 경로 → 신 경로 표**를 남긴다.
+- 컨트롤러의 `View()` 반환 액션(`Index`, `Detail`, `Preview`, `Setting`, `Users`, `Code`, `SectionTemplate`, `SignIn`, `Error403/404`, `Home/Error`)은 삭제한다.
+
+### 2-2. 인증·권한 (다시 검토한 결과)
+
+| 현재                                                                                    | 문제 / 변경                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[Auth]` 가 미로그인 시 로그인 페이지로 리다이렉트                                      | 페이지 게이트가 사라진다. **`GET /api/auth/me`** (로그인 사용자·역할·팀 반환, 미로그인 401) 를 만들고 router 전역 가드가 사용한다. `[Auth]` 속성은 삭제                                                                                                                                                                                           |
+| `DenyPageIfNotReadable` (404/403 화면 리다이렉트)                                       | 삭제. 문서 읽기 API 가 이미 `DenyIfNotReadable` (JSON 404/403) 을 쓰므로, SPA 가 응답 코드로 403/404 화면을 그린다                                                                                                                                                                                                                                |
+| 관리자 화면 `[Auth("ADMIN")]`                                                           | 관리자 API 는 **이미 `[AjaxAuth("ADMIN…")]` 로 개별 보호**되어 있음 (AdminController 확인함) → 페이지 게이트가 없어져도 권한 유지. SPA 라우트 가드는 UX 용일 뿐이다. **모든 API 에 `[AjaxAuth]` 가 빠짐없이 붙었는지 전수 점검하고 테스트로 고정**한다 (리플렉션으로 `[AjaxAuth]`/`[AllowAnonymous 성격]` 없는 액션 목록을 검사하는 xUnit 테스트) |
+| `SessionKeys` 리터럴이 `_LayoutMain.cshtml`, `Home/Index.cshtml` 에 남음 (known-issues) | Razor 삭제로 자동 해소. 세션 값은 `/api/auth/me` 로만 내려간다                                                                                                                                                                                                                                                                                    |
+| Antiforgery: Razor 폼/`ajaxSetting.js` 가 토큰 부착                                     | Razor 가 없으면 토큰 발급처가 없다. **`GET /api/auth/csrf`** 가 `IAntiforgery.GetAndStoreTokens` 로 쿠키 설정 + 토큰 반환 → API 클라이언트가 앱 시작 시 1회 받아 모든 비-GET 요청 헤더(`RequestVerificationToken`) 에 부착. 서버의 `[ValidateAntiForgeryToken]` 은 유지                                                                           |
+| `GET /auth/logout` (GET 으로 세션 종료)                                                 | CSRF 로그아웃이 가능하다. **`POST /api/auth/logout`** 으로 변경                                                                                                                                                                                                                                                                                   |
+| 로그인 흐름                                                                             | AuthController 의 보안 결정(관리자 우회 없음, 실패 응답 단일화, 15분 5회 제한, 성공 시 `Session.Clear()` 후 재작성)은 **그대로 유지**. 경로만 `/api/auth/login` 으로                                                                                                                                                                              |
+| 401/403 처리                                                                            | `UseStatusCodePagesWithReExecute("/auth/error{0}")` 제거 (Razor 화면 재실행이라서). `/api/**` 는 JSON, 그 외 404 는 SPA 폴백. API 클라이언트가 401 → 로그인, 403 → 403 화면                                                                                                                                                                       |
+| 세션 쿠키                                                                               | 그대로 사용 (same-origin, HttpOnly, Lax). JWT 등으로 바꾸지 않는다 — 범위 밖이고 얻는 것이 없다                                                                                                                                                                                                                                                   |
+
+### 2-2b. 권한으로 노출이 달라지는 항목 (현재 코드 조사 결과 — SPA 로 그대로 옮긴다)
+
+**메뉴/타일 — 결정: 서버가 `GET /api/auth/me` 응답에 접근 가능한 메뉴 목록을 함께 내려주고, 프런트는 받은 목록만 그린다.**
+- 원본은 C# 한 곳(`Common/MenuCatalog`, 신규): 메뉴 키·경로·허용 역할을 정의한다. 응답 예: `{ user:{USER_ID,FULL_NAME,ROLE,TEAM,DIVISION}, menus:[{key:"manual",path:"/manual"}, {key:"admin.code",path:"/admin/code"}, ...] }`. 라벨·아이콘은 프런트가 `key` 로 매핑한다 (서버는 표시 문구를 모른다).
+- 사이드바와 홈 타일이 **같은 `menus` 목록**을 쓴다 (지금처럼 `_LayoutMain`, `Home/Index` 두 곳에 역할 조건을 복제하지 않는다). SPA 라우트 가드도 이 목록에 없는 경로면 403 화면으로 보낸다.
+- 화면 안의 기능 노출(예: 문서 생성 버튼)은 메뉴가 아니라 **능력 플래그**로 내려준다 (`capabilities:{canCreateManual:true}` 등). 프런트에서 `role === 'ADMIN'` 같은 비교를 쓰지 않는다.
+- 메뉴 목록은 **UX 용**이다. 실제 차단은 API 의 `[AjaxAuth("…")]` 가 하며, 두 곳이 어긋나지 않도록 xUnit 테스트로 `MenuCatalog` 의 허용 역할 = 해당 컨트롤러 액션의 `[AjaxAuth]` 역할을 대조한다 (리플렉션).
+- 역할은 로그인 시 세션에 복사되므로(역할 변경은 재로그인 후 반영) `/api/auth/me` 는 세션 기준으로 응답한다. 앱 시작 시 1회 로드해 store 에 보관하고, 로그인 직후·401 복구 시 다시 로드한다.
+
+현재 규칙 (이 표를 `MenuCatalog` 로 옮긴다):
+
+| 항목 | ADMIN | SUPPORTER | USER | READER |
+|---|---|---|---|---|
+| Manuals (사이드바·홈 타일) | O | O | O | O |
+| Settings, Common Codes (사이드바·홈 타일) | O | O | X | X |
+| Section Templates, Users (사이드바·홈 타일) | O | X | X | X |
+
+(`_LayoutMain.cshtml` 의 `isAdminArea` = ADMIN/SUPPORTER, `role == "ADMIN"`; `Home/Index.cshtml` 도 동일. 사이드바 사용자 영역에 역할명 표시.)
+
+**화면 항목 (문서별 `access` 와 목차별 `CAN_EDIT_SEC` 기준 — 서버 프로시저가 계산한 값)**
+- 문서 상세: `access.CAN_EDIT !== 'Y'` 이면 안내 배너("읽기 전용입니다…") + 헤더 입력·저장·표지 업로드·문서 스타일·목차관리·페이지 나눔·작성 요청 보내기·본문 편집 버튼 전부 **비활성(disabled)**. 목차 행의 ↑↓·수정·삭제는 `CAN_EDIT && s.CAN_EDIT_SEC === 'Y'` 일 때만 활성.
+- 편집기: 목차 선택 시 `canEditActive` (문서 편집 가능 AND 해당 목차 `CAN_EDIT_SEC`) 가 아니면 블록 추가·이동·삭제·표 편집·저장 버튼 비활성, CKEditor 는 `readOnly`. 문서는 편집 가능하지만 이 목차는 담당 팀이 달라 못 고치는 경우 별도 안내 문구 표시.
+- 문서 목록: 행에 `MY_ROLE` 배지, "내 문서만" 필터.
+- 이 값들은 **숨김이 아니라 비활성**이 기본이다. 이전 후에도 같은 방식을 유지하고, 판정 로직을 프런트에서 재구현하지 않는다 (서버가 준 `CAN_EDIT`, `CAN_EDIT_SEC` 만 사용).
+- E2E 권한 매트릭스(5-3)는 이 표를 검증 대상으로 삼는다: 역할별 메뉴 노출, READER/타 팀 사용자의 버튼 비활성, 그리고 비활성 UI 를 우회한 직접 API 호출이 403 인지.
+
+**조사 중 발견 — P0 에서 확인할 것**
+- 문서 목록의 **"New Manual" 버튼은 모든 역할에게 보이고**, `POST /manual/create` 는 `[AjaxAuth]` (역할 제한 없음) 다. `permissions.md` 는 READER 를 읽기 전용이라 하는데, `USP_S_INSERT_MANUAL` 이 역할을 검사하는지는 코드상 확인되지 않았다. **READER 가 문서를 만들 수 있는지 프로시저를 읽어 확인**하고, 만들 수 있다면 의도인지 사용자에게 묻는다(의도가 아니면 서버에서 막고 버튼도 숨김). 의도를 모르는 채 임의로 막지 않는다.
+
+### 2-3. 서버 값 주입 (`window.XXX = @Json.Serialize(...)` 대체)
+
+- **`GET /api/bootstrap`** 신설: `HeadingStyle.ClientDefaults()`, `BodyFonts` 목록, 핀 배치 카테고리 등 **C# 이 원본인 값**을 내려준다. 프런트에 기본값을 복제하지 않는다는 규칙은 유지 (앱 시작 시 1회 로드 후 store 에 보관).
+- 응답 DTO 는 지금처럼 UPPER_SNAKE 유지 (`PropertyNamingPolicy = null`). TS 타입은 `web/src/api/types.ts` 한 곳에서 정의 (필요하면 후속 과제로 OpenAPI 타입 생성 검토).
+
+## 3. 문서 렌더링 (미리보기·PDF) — 가장 큰 결정
+
+현재: `BuildPreviewModel` → `Pdf.cshtml` + `_DocSheet.cshtml` (Razor) → `PdfRenderer`(Playwright) → 벡터 PDF. 미리보기도 같은 `_DocSheet` 를 공유. Razor 를 없애면 **`_DocSheet` 를 대체할 방법이 필요**하다.
+
+**결정: 문서 HTML 은 서버(C#)가 만든다. Vue 는 그리지 않는다.**
+
+- 이유: (1) 미리보기와 PDF 가 **동일한 HTML 을 쓴다는 현재의 핵심 보장**을 유지 (2) PdfRenderer 는 "문서 HTML + wwwroot 정적 파일만 허용, 나머지 네트워크 차단" 구조라 SPA 를 PDF 로 찍으려면 헤드리스 브라우저 인증·라우팅·차단 정책을 전부 다시 설계해야 함 (3) 2-pass 목차 쪽 번호 전제(1·2차 배치 동일)를 서버가 완전히 통제.
+- 구현: `Utils/DocumentHtmlBuilder` (신규) — `PreviewViewModel` → 완전한 HTML 문서 문자열. 템플릿 엔진을 쓸 경우 **Fluid(Liquid)** 정도의 경량 라이브러리는 허용하되 Razor 는 불가. 모든 동적 값은 `WebUtility.HtmlEncode`, 본문 블록·사양 HTML 은 기존처럼 `HtmlSanitize.Clean` 통과 후 삽입 (우회 경로 금지).
+- 엔드포인트: `GET /api/manual/document-html?mid=&mode=preview|pdf` → `text/html` (읽기 권한 검사 필수, `NoStore`).
+- **미리보기 화면은 `<iframe src="/api/manual/document-html?...">`** 로 표시한다. 문서 CSS(`doc-type.css`, `preview.css`, `ds-spec.css`, `fonts.css`)와 앱 CSS(Tailwind)가 서로 새지 않고, PDF 와 픽셀 단위로 같은 결과가 나온다. (Shadow DOM 도 대안이나 `@page`, 인쇄 CSS 때문에 iframe 이 안전)
+- `PdfRenderer` 는 입력이 문자열 HTML 이라 **그대로 유지**. `ManualController.RenderViewToStringAsync` 만 `DocumentHtmlBuilder` 호출로 교체.
+- **문서 CSS 는 Bootstrap/Metronic 에 의존하지 않게 만든다.** 지금 `Pdf.cshtml` 은 `style.bundle.css`(Metronic) 를 로드한다 → 문서에 실제로 영향을 주는 규칙(reset, 표 기본값 등)을 식별해 `doc-base.css` 로 옮기고 Metronic 링크를 제거. `preview.css` 의 `@page` 여백 = `RenderPdfAsync` 여백 옵션 규칙, 글자 크기는 `doc-type.css` 변수만 수정하는 규칙은 그대로.
+- **회귀 방지 (필수, 착수 전에 먼저)**: 개편 **전** 현 코드로 대표 문서 3~4종(사양 목차 포함, 이미지·표 포함, A4 / Letter) 의 PDF 를 생성해 페이지별 PNG 골든으로 저장(`web/e2e/__golden__/`). 이후 Razor → C# 빌더 전환 뒤 동일 문서와 비교한다. 목차 쪽 번호·쪽 나눔·글꼴이 달라지면 실패로 본다. 빌더 자체에는 xUnit 스냅샷 테스트를 작성한다 (testing.md 정책).
+- 글꼴 주의는 그대로: Carlito 만 동봉, 나머지는 PDF 를 만드는 서버 설치 글꼴에 의존.
+
+## 4. 본문 편집기 (CKEditor 5) 검토 결과
+
+**결론: Vue 3 + SPA 에서 문제없이 사용 가능. 공식 Vue 3 컴포넌트가 있다.**
+
+- 공식 패키지 `@ckeditor/ckeditor5-vue` (Vue 3 전용, 최신 8.x) 와 통합 패키지 `ckeditor5` (npm) 를 쓴다. Vue 2 용은 별도 패키지라서 지금 쓰는 것과 무관.
+- 현재 `wwwroot/assets/plugins/custom/ckeditor/ckeditor5.min.js` 는 **빌드 산출물을 벤더 복사한 것 + import map** 방식이다. 이걸 버리고 npm `ckeditor5` 를 Vite 로 번들한다 (import map, `ckeditor-factory.js` 의 `window.createBlockEditor` 전역 제거).
+- `web/src/features/editor/` 에 `BlockEditor.vue` 래퍼를 만들고 `<ckeditor :editor="ClassicEditor" :config="config" v-model>` 을 사용한다. 기존 `ckeditor-factory.js` 의 **설정 그대로 이식**: PLUGINS/TOOLBAR, `licenseKey: 'GPL'`, 이미지 리사이즈(%), `SimpleUploadAdapter`(업로드 URL + Antiforgery 헤더), `stripWordFormatting`(Word 붙여넣기 서식 제거), readOnly, blur 저장.
+- 주의점:
+    - **라이선스**: 지금 `licenseKey:'GPL'` (내부 사용 OSS). **결정: 무료(GPL 오픈소스) 버전을 계속 사용한다.** 유료 기능(Premium features, Cloud 서비스)은 쓰지 않는다. 에이전트는 키를 바꾸지 않고, 유료 전용 플러그인을 도입하지 않는다.
+    - **버전**: `ckeditor5` 와 하위 패키지는 **동일 버전으로 고정**. 벤더 복사본의 현재 버전(파일 헤더 2003-2024 → 4x 대)을 확인해 같은 메이저로 시작해도 되고, 최신으로 올리면 플러그인 API 변경 여부를 E2E 로 확인.
+    - **v-model 과 커서**: `v-model` 이 `setData` 를 재호출하면 커서가 튄다. 블록 단위 저장(`ROW_VER` 낙관적 동시성, 409 시 재시도 없이 새로고침 안내)이라 **blur 시점에 값 반영, 외부 값 변경 때만 `setData`** 하는 방식으로 래핑한다.
+    - **허용 서식 = `HtmlSanitize` 화이트리스트**: CKEditor 기능을 바꾸면 서버 화이트리스트도 함께 (규칙 유지). 편집기 출력 → 저장 → 미리보기가 왕복해도 태그가 안 지워지는지 E2E 로 확인.
+    - **CSS 격리**: CKEditor 내장 CSS 가 Tailwind reset 과 충돌할 수 있다. 편집 영역만 `.ck-content` 스코프로 문서 스타일(`doc-type.css`)을 입힌다.
+    - 언어/번역 팩이 필요하면 별도 import (현재 한국어 UI 여부를 `ckeditor5.min.js` 로 확인하고 동일하게 맞춘다).
+
+## 5. 테스트 · 개발 서버 로그인 생략
+
+### 5-1. E2E 실행 방식 (개발 서버 가동 전제)
+
+- 개발 서버는 **사람이 미리 띄워 둔다** (`dotnet watch run --launch-profile https`, 프런트는 `npm run dev`). Playwright 는 서버를 띄우지 않는다 → `playwright.config.ts` 에 **`webServer` 를 쓰지 않는다.**
+- `baseURL` 은 `E2E_BASE_URL` (기본 `http://localhost:5173`, Vite 프록시 경유). `ignoreHTTPSErrors: true` (로컬 개발 인증서).
+- `globalSetup` 이 baseURL 과 `/api/health` 에 접속해 보고, 실패하면 **"개발 서버를 먼저 실행하세요: …" 안내와 함께 즉시 종료**한다 (타임아웃 대기 금지).
+- 설치: `web/` 에서 `npm i -D @playwright/test` → `npx playwright install chromium`. 실행: `npm run e2e` (`playwright test`), UI 모드 `npm run e2e:ui`.
+- **주의**: 서버(C#)의 PDF 생성용 `Microsoft.Playwright` NuGet 과 npm `@playwright/test` 는 별개 패키지다. 브라우저 캐시(`~/Library/Caches/ms-playwright`)를 공유하되 **버전 리비전이 다르면 각각 설치가 필요**하다. 서버 PDF 는 기본 `msedge` 채널 (`PDF:BROWSER_CHANNEL`).
+- **DB**: E2E 는 **전용 개발/테스트 DB** 에서만. 운영·공유 DB 금지. 데이터를 만드는 테스트는 고유 접두사(`E2E-<timestamp>`) 문서를 만들고 스스로 정리한다. 테스트 계정은 `05_seed_testusers.sql` 계정을 사용 (에이전트가 DB 스크립트를 실행하지 않는다 — 필요한 시드가 있으면 스크립트만 작성하고 사용자에게 실행을 요청).
+
+### 5-2. 개발 서버 로그인 생략 (Development 전용 자동 로그인)
+
+목적: E2E 와 화면 개발 때 로그인 화면을 거치지 않고, **역할별(ADMIN / USER-담당팀 / USER-타팀 / READER)로 빠르게 전환**.
+
+- 설정: **`appsettings.Development.json`** 의 `Dev:AutoLoginUserId` (로컬 전용 파일이며 커밋하지 않는다). 값은 **사용자 ID 만** — 비밀번호 등 자격 증명은 넣지 않는다. `appsettings.json`(공통) 에는 이 키를 넣지 않는다 — 없으면 자동 로그인은 꺼진 상태.
+- 구현: `Utils/DevAutoLogin` 미들웨어 (신규).
+    - 세션에 로그인 정보가 없을 때만 동작. DB 의 **실제 사용자 레코드와 역할**로 `AuthController` 와 **동일한 세션 키**를 채운다 (역할·팀을 임의로 꾸며 넣지 않는다 → 권한 검증이 실제와 같다).
+    - E2E 역할 전환: 요청 헤더 `X-Dev-User: <USER_ID>` (Playwright `extraHTTPHeaders` 또는 프로젝트별 `use`). 헤더가 있으면 해당 사용자로 세션을 새로 만든다.
+- **안전장치 (전부 필수, 테스트로 고정)**
+    1. `app.Environment.IsDevelopment()` 일 때만 미들웨어를 등록한다. 그 외 환경에서 `Dev:AutoLoginUserId` 가 설정돼 있으면 **시작 시 예외로 종료**.
+    2. 요청이 **loopback(127.0.0.1/::1)** 에서 온 경우에만 동작.
+    3. 로그인 API(`/api/auth/login`)의 로직·throttle 은 건드리지 않는다. 자동 로그인은 세션을 채우는 별도 경로이며 로그에 `DEV AUTO LOGIN user=…` 를 경고 수준으로 남긴다.
+    4. xUnit: Production 환경 구성에서 미들웨어가 없다 / 설정이 있으면 시작 실패 / 비-loopback 은 무시 — 세 가지를 검증.
+- **로그인 자체의 E2E 는 별도**: `auth.spec.ts` 만 자동 로그인을 끄고(`X-Dev-User` 없이, `Dev:AutoLoginUserId` 미설정 서버) 실제 로그인 폼을 검증한다. 접속 정보는 환경변수(`E2E_USER`, `E2E_PASSWORD`) 로만 받고 커밋하지 않는다. (자동 로그인 서버와 로그인 검증 서버가 같으면 `X-Dev-User: none` 헤더로 비활성화하는 방식도 가능 — 구현 시 단순한 쪽 선택.)
+
+### 5-3. E2E 시나리오 (최소 세트)
+
+1. 스모크: 문서 목록 진입, 상세, 미리보기(iframe 렌더) 콘솔 오류 0.
+2. 권한 매트릭스: ADMIN / 담당 팀 USER / 타 팀 USER / READER × (읽기, 목차 편집, 블록 저장, 상태 변경). **UI 가 숨겨도 API 가 막는지(`request` 로 직접 호출해 403)** 를 함께 검증 — "권한은 서버가 결정" 규칙.
+3. 편집기: 블록 편집·저장, 이미지 업로드, `ROW_VER` 충돌(409) 안내, Word 붙여넣기 서식 제거, 왕복 후 서식 보존.
+4. PDF: 생성 성공 + 골든 PNG 비교 (3장), 목차 쪽 번호.
+5. 관리자 화면: 사용자·코드·설정·목차 템플릿 CRUD.
+6. 시각 회귀: 디자인 시스템 스타일가이드 페이지 스냅샷.
+
+- 단위/컴포넌트: Vitest + @vue/test-utils + MSW. CI 3단: `dotnet test`, `npm run test`, `npm run e2e` (E2E 는 서버 기동을 CI 스크립트가 따로 책임진다).
+
+## 6. 디자인 시스템 재정의
+
+- `web/src/design-system/tokens.css`: 색·간격·반경·그림자·타이포·z-index 를 **CSS 변수**로 정의하고 Tailwind 테마에 연결. **다크 모드는 없다** (라이트 단일 테마. 다크 대비 변수 구조·`prefers-color-scheme` 분기를 만들지 않는다).
+- 기본 컴포넌트: Button, Input, Select, Textarea, Checkbox, Modal(Dialog), Drawer, Table(정렬·페이지네이션·빈 상태), Badge(문서 상태 DRAFT/REVIEW/APPROVED/PUBLISHED/OBSOLETE — **상태 라벨 상수는 `features/manual/status.ts` 한 곳**), Toast, Tabs, Tooltip, Skeleton, EmptyState, ConfirmDialog.
+- 앱 UI 크기 체계와 **문서 글자 크기 체계(`doc-type.css`)는 분리**한다. 문서 쪽 값의 단일 진실 공급원은 계속 `doc-type.css`. `docs/design-system/font-size.md` 표가 코드와 다른 문제(known-issues)는 **코드 기준으로 재작성**하며 해소.
+- `/dev/styleguide` (Development 에서만 노출) 에 모든 컴포넌트를 나열 → 시각 회귀 E2E 대상.
+- 접근성 기본: 키보드 포커스 링, 대비, 모달 포커스 트랩 (Reka UI 사용으로 대부분 해결).
+
+## 7. 진행 단계 (각 단계 끝에서 build · test · 문서 갱신)
+
+| 단계                 | 내용                                                                                                                                                                                                    | 완료 기준                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ---- | ----- | ----------------- | ------------------------------------------ |
+| **P0 기준선**        | 현 PDF 골든 생성(3장), 현 화면 스크린샷 기록, 관리자·문서 API 의 `[AjaxAuth]` 누락 점검                                                                                                                 | 골든 저장, 점검 결과를 known-issues 또는 PR 설명에 기록                  |
+| **P1 기반**          | `web/` 생성(Vite·TS·Tailwind·Vitest·Playwright), 프록시, `/api/health`, `/api/auth/csrf`, `/api/auth/me`, `/api/bootstrap`, SPA 폴백, DevAutoLogin + 테스트, 스모크 E2E                                 | `npm run dev` + 서버 기동 후 자동 로그인으로 빈 앱 셸이 뜨고 스모크 통과 |
+| **P2 디자인 시스템** | 토큰·기본 컴포넌트·styleguide·시각 회귀                                                                                                                                                                 | 스타일가이드 E2E 통과                                                    |
+| **P3 API 재편**      | JSON 액션을 `/api/...` 로 이동(신규 경로 추가, 이 기간에만 구 경로 병행), 경로표 문서화, AjaxAuth 전수 테스트                                                                                           | 기존 화면·신규 SPA 모두 동작                                             |
+| **P4 소형 화면**     | sign-in, 403/404, admin 4종, 문서 목록                                                                                                                                                                  | 화면별 E2E 통과 후 해당 구 화면 삭제                                     |
+| **P5 문서 렌더링**   | `DocumentHtmlBuilder` + 스냅샷 테스트, `/api/manual/document-html`, PDF 전환, Metronic CSS 분리                                                                                                         | 골든 PDF 비교 통과, 미리보기 iframe 동작                                 |
+| **P6 대형 화면**     | 문서 상세(detail), 편집기(editor + CKEditor 래퍼)                                                                                                                                                       | 5-3 시나리오 전부 통과                                                   |
+| **P7 제거·정리**     | `Views/`, `_ViewImports`, Razor 관련 DI·패키지, `wwwroot/assets/**`, `wwwroot/lib/**`, 구 `wwwroot/js/**`, 구 API 경로, `_ValidationScriptsPartial`, `ajaxSetting.js` 중복 파일 삭제. `grep -rE 'jquery | bootstrap                                                                | \$\( | @Html | \.cshtml'` 결과 0 | 아래 8장 문서 갱신 완료 + 전체 테스트 통과 |
+
+- 진행 원칙: 화면 하나를 옮길 때마다 그 화면의 구 cshtml·JS 를 같은 변경에서 삭제한다 (죽은 코드 방치 금지). P3~P6 동안 구/신이 공존하며 세션 쿠키를 공유하므로 로그인은 한쪽에서 해도 된다.
+- 신규 화면은 **Bootstrap/jQuery/Metronic 클래스를 쓰지 않는다** (공존 기간에도). 신 스타일은 `/app/` 번들 안에만 존재한다.
+- 커밋·푸시는 사용자가 요청할 때만.
+
+## 8. 문서 수정 (이 스펙에 맞게 — 각 단계와 같은 변경에서)
+
+코드보다 앞서 고치면 문서가 거짓이 되므로 **구현이 들어가는 단계에서 함께 갱신**하고, P7 에서 전수 대조한다.
+
+| 문서                                               | 변경                                                                                                                                                                                    |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AGENTS.md`                                        | 첫 줄 스택 설명(Vue 2 전역 스크립트 → Vue 3 SPA), 코드 지도(Views, `wwwroot/js/custom` → `web/`), 자주 쓰는 명령(`npm run dev/test/e2e`), 작업 표(화면 항목)                            |
+| `docs/architecture/frontend.md`                    | 전면 재작성: SPA 구조, API 클라이언트(Antiforgery·401/403), CKEditor 래퍼, CSS 격리 규칙. ES5·전역 스크립트·jQuery·`@@` 이스케이프 규칙 삭제                                            |
+| `docs/architecture/backend.md`                     | View 반환 없음, `/api` 라우팅, SPA 폴백, `[Auth]` 삭제, `AddControllers`                                                                                                                |
+| `docs/architecture/permissions.md`                 | 페이지 게이트 → SPA 가드(UX) + API 가 실제 차단, `/api/auth/me`, Antiforgery 발급 경로, logout POST, DevAutoLogin 안전장치                                                              |
+| `docs/architecture/document-rendering.md`          | 파이프라인을 `DocumentHtmlBuilder` 기준으로, iframe 미리보기, Razor 언급 삭제, Metronic CSS 의존 제거, 골든 PDF 회귀 방법                                                               |
+| `docs/design-system/`                              | `font-size.md` 를 코드 기준으로 재작성 + 신규 `tokens.md`, `components.md`                                                                                                              |
+| `docs/workflows/add-screen.md`, `add-endpoint.md`  | 새 화면 = `web/src/features/...` + 라우트 + E2E, 새 API = `/api/...` + AjaxAuth + 클라이언트 함수·타입                                                                                  |
+| `docs/workflows/testing.md`                        | 프런트(Vitest)·E2E 섹션 추가, "아직 없는 것" 삭제                                                                                                                                       |
+| `docs/workflows/verification.md`                   | `.cshtml / JS` 행을 `web/` 기준(`npm run typecheck && npm run test`, E2E)으로 교체                                                                                                      |
+| `docs/policies/security.md`, `coding-standards.md` | Razor 인코딩 전제 문구 → C# `DocumentHtmlBuilder` 인코딩·`HtmlSanitize`, JS ES5 스타일 규칙 → TS 규칙                                                                                   |
+| `docs/known-issues.md`                             | 프런트 항목(상태 라벨 중복, 세션 키 리터럴, ajaxSetting 중복, lib 미사용, font-size 표)은 **해결되는 단계에서 삭제**. "Playwright e2e 도입" 삭제. 새로 발견한 범위 밖 문제는 한 줄 추가 |
+| `README.md`                                        | 설치 절차(Node 버전 명시), 실행 방법                                                                                                                                                    |
+| 신규 `docs/workflows/e2e.md`                       | 5장 내용: 서버 선기동, 설치·실행 명령, 자동 로그인·역할 전환, 골든 갱신 절차, DB 주의                                                                                                   |
+
+## 9. 결정 사항과 남은 질문
+
+결정됨: Node 24 / CKEditor 5 Vue 3 전환(무료 GPL) / 다크 모드 없음 / 역할별 메뉴는 **현행 유지** (ADMIN·SUPPORTER·USER·READER 별 노출 메뉴를 지금 `_LayoutMain.cshtml` 규칙 그대로 SPA 사이드바로 옮기고 구조·항목을 바꾸지 않는다. 메뉴 노출 규칙은 `/api/auth/me` 의 역할로 결정하되 UX 일 뿐, 차단은 API 가 한다).
+
+배포 빌드: **SPA 빌드를 .NET publish 에 포함한다.** `ExodusSystemManual.csproj` 에 `dotnet publish` 시 `web/` 에서 `npm ci && npm run build` (Node 24) 를 실행하고 산출물(`wwwroot/app/`)을 게시 결과에 포함하는 타깃을 둔다. 일반 `dotnet build` / `dotnet test` 는 npm 을 실행하지 않는다 (Condition 으로 publish 시에만, 필요하면 `-p:SkipWebBuild=true` 로 생략 가능). 빌드 서버에 Node 24 가 있어야 하며 README 에 명시한다. `web/node_modules`, `wwwroot/app/` 는 git 제외.
+
+남은 질문: 없음.

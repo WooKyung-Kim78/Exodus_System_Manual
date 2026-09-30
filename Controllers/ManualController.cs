@@ -5,22 +5,18 @@ using ExodusSystemManual.Data;
 using ExodusSystemManual.Models;
 using ExodusSystemManual.Utils;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.AspNetCore.Mvc.ViewEngines;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Playwright;
 
 namespace ExodusSystemManual.Controllers;
 
-[Route("manual")]
+[Route("api/manual")]
 public class ManualController : BaseController<ManualController>
 {
     private readonly SendMail _mail;
     private readonly HtmlSanitize _sanitizer;
     private readonly DatasheetSpec _datasheet;
     private readonly PdfRenderer _pdf;
-    private readonly ICompositeViewEngine _viewEngine;
 
     public ManualController(
         ApplicationDbContext db,
@@ -30,58 +26,21 @@ public class ManualController : BaseController<ManualController>
         SendMail mail,
         HtmlSanitize sanitizer,
         DatasheetSpec datasheet,
-        PdfRenderer pdf,
-        ICompositeViewEngine viewEngine)
+        PdfRenderer pdf)
         : base(db, env, logger, config)
     {
         _mail = mail;
         _sanitizer = sanitizer;
         _datasheet = datasheet;
         _pdf = pdf;
-        _viewEngine = viewEngine;
-    }
-
-    /* ================= 페이지 ================= */
-
-    [Auth]
-    [HttpGet("")]
-    public IActionResult Index() => View();
-
-    [Auth]
-    [HttpGet("detail")]
-    public IActionResult Detail(string mid)
-    {
-        if (string.IsNullOrEmpty(mid)) return Redirect("/manual");
-
-        var access = GetManualAccess(mid);
-        if (access is null) return NotFound();
-        if (access.CAN_READ != "Y") return Redirect("/auth/error403");
-
-        ViewData["MID"] = mid;
-        return View();
-    }
-
-    [Auth]
-    [HttpGet("preview")]
-    public IActionResult Preview(string mid)
-    {
-        if (string.IsNullOrEmpty(mid)) return Redirect("/manual");
-
-        var access = GetManualAccess(mid);
-        if (access is null) return NotFound();
-        if (access.CAN_READ != "Y") return Redirect("/auth/error403");
-
-        var model = BuildPreviewModel(mid);
-        return model is null ? NotFound() : View(model);
     }
 
     [AjaxAuth]
     [HttpGet("pdf")]
     public async Task<IActionResult> Pdf(string mid, CancellationToken ct)
     {
-        var access = GetManualAccess(mid);
-        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
-        if (access.CAN_READ != "Y") return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+        var denied = DenyIfNotReadable(mid);
+        if (denied is not null) return denied;
 
         var model = BuildPreviewModel(mid);
         if (model is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
@@ -102,13 +61,13 @@ public class ManualController : BaseController<ManualController>
             return JsonFail(StatusCodes.Status500InternalServerError, "PDF 를 만들지 못했습니다.");
         }
 
-        Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
+        NoStore();
         return File(pdf, "application/pdf", model.FileName);
     }
 
     private async Task<byte[]> RenderPdfAsync(PreviewViewModel model, CancellationToken ct)
     {
-        var html = await RenderViewToStringAsync("Pdf", model);
+        var html = DocumentHtmlBuilder.Build(model);
 
         // 여백은 preview.css 의 @page 와 같아야 한다.
         return await _pdf.RenderAsync(html, new PagePdfOptions
@@ -176,17 +135,21 @@ public class ManualController : BaseController<ManualController>
              + "</div>";
     }
 
-    private async Task<string> RenderViewToStringAsync(string viewName, object model)
+    [AjaxAuth]
+    [HttpGet("document-html")]
+    public IActionResult DocumentHtml(string mid, string? mode)
     {
-        var found = _viewEngine.FindView(ControllerContext, viewName, isMainPage: true);
-        if (!found.Success)
-            throw new InvalidOperationException($"뷰를 찾을 수 없습니다: {viewName}");
+        if (mode is not ("preview" or "pdf"))
+            return JsonFail(StatusCodes.Status400BadRequest, "mode 는 preview 또는 pdf 이어야 합니다.");
 
-        ViewData.Model = model;
-        await using var writer = new StringWriter();
-        var context = new ViewContext(ControllerContext, found.View, ViewData, TempData, writer, new HtmlHelperOptions());
-        await found.View.RenderAsync(context);
-        return writer.ToString();
+        var denied = DenyIfNotReadable(mid);
+        if (denied is not null) return denied;
+
+        var model = BuildPreviewModel(mid);
+        if (model is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
+
+        NoStore();
+        return Content(DocumentHtmlBuilder.Build(model), "text/html; charset=utf-8");
     }
 
     /* ================= 목록 / 헤더 ================= */
@@ -243,9 +206,8 @@ public class ManualController : BaseController<ManualController>
     [Produces("application/json")]
     public IActionResult FindOne(string mid)
     {
-        var access = GetManualAccess(mid);
-        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
-        if (access.CAN_READ != "Y") return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+        var denied = DenyIfNotReadable(mid, out var access);
+        if (denied is not null) return denied;
 
         var header = _db.USP_S_SELECT_MANUAL
             .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_MANUAL {0}", mid)
@@ -354,9 +316,8 @@ public class ManualController : BaseController<ManualController>
     [Produces("application/json")]
     public IActionResult GetNotifyRecipients(string mid)
     {
-        var access = GetManualAccess(mid);
-        if (access is null || access.CAN_READ != "Y")
-            return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+        var denied = DenyIfNotReadable(mid);
+        if (denied is not null) return denied;
 
         // 미리보기와 실제 발송 대상이 어긋나지 않도록 본인 제외 기준을 서버에서 맞춘다.
         var list = _db.USP_S_SELECT_NOTIFY_RECIPIENT_LIST
@@ -439,9 +400,8 @@ public class ManualController : BaseController<ManualController>
     [Produces("application/json")]
     public IActionResult GetSpec(string mid)
     {
-        var access = GetManualAccess(mid);
-        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
-        if (access.CAN_READ != "Y") return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+        var denied = DenyIfNotReadable(mid);
+        if (denied is not null) return denied;
 
         var header = LoadHeader(mid);
         if (header is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
@@ -488,29 +448,12 @@ public class ManualController : BaseController<ManualController>
 
     private string AppDomainUrl => _config["APP:DOMAIN"] ?? "https://localhost:7177";
 
-    private string CurrentUserName
-        => HttpContext.Session.GetString("FULL_NAME") ?? CurrentUserId ?? "시스템";
-
     private ManualHeader? LoadHeader(string mId)
         => _db.USP_S_SELECT_MANUAL
             .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_MANUAL {0}", mId)
             .AsEnumerable().FirstOrDefault();
 
-    private IActionResult? DenyIfNotEditable(string mId)
-    {
-        var access = GetManualAccess(mId);
-        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
-        if (access.MEMBER_ROLE is null && access.USER_ROLE != "ADMIN")
-            return JsonFail(StatusCodes.Status403Forbidden, "이 문서의 참여자가 아닙니다.");
-        if (access.CAN_EDIT != "Y")
-            return JsonFail(StatusCodes.Status403Forbidden, "작성(DRAFT) 상태의 문서만 수정할 수 있습니다.");
-        return null;
-    }
 
-    private IActionResult ToJson(ResultModel? result)
-        => result is null || result.Success == 0
-            ? JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "요청을 처리하지 못했습니다.")
-            : JsonOk();
 
     /* ---------- datasheet 사양 → SPECIFICATIONS 목차 ---------- */
 

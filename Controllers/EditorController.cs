@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ExodusSystemManual.Controllers;
 
 /// 목차(섹션) 계층과 섹션별 본문 블록을 편집한다.
-[Route("editor")]
+[Route("api/editor")]
 public class EditorController : BaseController<EditorController>
 {
     private readonly HtmlSanitize _sanitizer;
@@ -27,29 +27,13 @@ public class EditorController : BaseController<EditorController>
         _sanitizer = sanitizer;
     }
 
-    [Auth]
-    [HttpGet("")]
-    public IActionResult Index(string mid, long? secId)
-    {
-        if (string.IsNullOrEmpty(mid)) return Redirect("/manual");
-
-        var access = GetManualAccess(mid);
-        if (access is null) return NotFound();
-        if (access.CAN_READ != "Y") return Redirect("/auth/error403");
-
-        ViewData["MID"] = mid;
-        ViewData["SEC_ID"] = secId;
-        return View();
-    }
-
     [AjaxAuth]
     [HttpGet("data")]
     [Produces("application/json")]
     public IActionResult GetDocument(string mid)
     {
-        var access = GetManualAccess(mid);
-        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
-        if (access.CAN_READ != "Y") return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+        var denied = DenyIfNotReadable(mid, out var access);
+        if (denied is not null) return denied;
 
         var header = _db.USP_S_SELECT_MANUAL
             .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_MANUAL {0}", mid)
@@ -74,9 +58,8 @@ public class EditorController : BaseController<EditorController>
     [Produces("application/json")]
     public IActionResult GetSections(string mid, long? secId)
     {
-        var access = GetManualAccess(mid);
-        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
-        if (access.CAN_READ != "Y") return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+        var denied = DenyIfNotReadable(mid);
+        if (denied is not null) return denied;
 
         var sections = _db.USP_S_SELECT_SECTION_LIST
             .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_SECTION_LIST {0}, {1}", mid, CurrentUserId!)
@@ -147,9 +130,8 @@ public class EditorController : BaseController<EditorController>
     [Produces("application/json")]
     public IActionResult GetSectionHistory(string mid, long secId)
     {
-        var access = GetManualAccess(mid);
-        if (access is null || access.CAN_READ != "Y")
-            return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+        var denied = DenyIfNotReadable(mid);
+        if (denied is not null) return denied;
 
         var list = _db.USP_S_SELECT_SECTION_HISTORY
             .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_SECTION_HISTORY {0}, {1}, {2}", mid, secId, 100)
@@ -164,9 +146,8 @@ public class EditorController : BaseController<EditorController>
     [Produces("application/json")]
     public IActionResult GetTemplateOptions(string mid)
     {
-        var access = GetManualAccess(mid);
-        if (access is null || access.CAN_READ != "Y")
-            return JsonFail(StatusCodes.Status403Forbidden, "권한이 없습니다.");
+        var denied = DenyIfNotReadable(mid);
+        if (denied is not null) return denied;
 
         var list = _db.USP_S_SELECT_TEMPLATE_OPTION_LIST
             .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_TEMPLATE_OPTION_LIST {0}", mid)
@@ -382,19 +363,5 @@ public class EditorController : BaseController<EditorController>
         return p;
     }
 
-    private IActionResult? DenyIfNotEditable(string mId)
-    {
-        var access = GetManualAccess(mId);
-        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
-        if (access.MEMBER_ROLE is null && access.USER_ROLE != "ADMIN")
-            return JsonFail(StatusCodes.Status403Forbidden, "이 문서의 참여자가 아닙니다.");
-        if (access.CAN_EDIT != "Y")
-            return JsonFail(StatusCodes.Status403Forbidden, "작성(DRAFT) 상태의 문서만 수정할 수 있습니다.");
-        return null;
-    }
 
-    private IActionResult ToJson(ResultModel? result)
-        => result is null || result.Success == 0
-            ? JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "요청을 처리하지 못했습니다.")
-            : JsonOk();
 }

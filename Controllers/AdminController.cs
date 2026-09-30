@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ExodusSystemManual.Controllers;
 
-[Route("admin")]
+[Route("api/admin")]
 public class AdminController : BaseController<AdminController>
 {
     private static readonly string[] SmtpKeys =
@@ -32,10 +32,6 @@ public class AdminController : BaseController<AdminController>
         _mail = mail;
         _sanitizer = sanitizer;
     }
-
-    [Auth("ADMIN, SUPPORTER")]
-    [HttpGet("setting")]
-    public IActionResult Setting() => View();
 
     [AjaxAuth("ADMIN, SUPPORTER")]
     [HttpGet("setting/mail")]
@@ -150,10 +146,6 @@ public class AdminController : BaseController<AdminController>
 
     /* ================= 목차 템플릿 ================= */
 
-    [Auth("ADMIN")]
-    [HttpGet("section-template")]
-    public IActionResult SectionTemplate() => View();
-
     [AjaxAuth("ADMIN")]
     [HttpGet("section-template/list")]
     [Produces("application/json")]
@@ -255,10 +247,6 @@ public class AdminController : BaseController<AdminController>
     }
 
     /* ================= 사용자 관리 ================= */
-
-    [Auth("ADMIN")]
-    [HttpGet("user")]
-    public IActionResult Users() => View();
 
     [AjaxAuth("ADMIN")]
     [HttpGet("user/list")]
@@ -395,10 +383,6 @@ public class AdminController : BaseController<AdminController>
     }
 
     /* ================= 공통 코드 ================= */
-
-    [Auth("ADMIN, SUPPORTER")]
-    [HttpGet("code")]
-    public IActionResult Code() => View();
 
     [AjaxAuth("ADMIN, SUPPORTER")]
     [HttpGet("code/list")]

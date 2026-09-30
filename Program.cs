@@ -28,9 +28,8 @@ var datasheetConnectionString = builder.Configuration.GetConnectionString("Datas
 builder.Services.AddDbContext<DatasheetDbContext>(o => o.UseSqlServer(
     string.IsNullOrWhiteSpace(datasheetConnectionString) ? connectionString : datasheetConnectionString));
 
-builder.Services.AddControllersWithViews()
-    .AddJsonOptions(o => o.JsonSerializerOptions.PropertyNamingPolicy = null)
-    .AddRazorRuntimeCompilation();
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.PropertyNamingPolicy = null);
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddMemoryCache();
@@ -67,10 +66,13 @@ builder.Services.Configure<FormOptions>(o =>
 
 var app = builder.Build();
 
+if (!app.Environment.IsDevelopment() && !string.IsNullOrWhiteSpace(builder.Configuration["Dev:AutoLoginUserId"]))
+    throw new InvalidOperationException("Dev:AutoLoginUserId 는 Development 환경에서만 설정할 수 있습니다.");
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler("/api/health");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
@@ -78,18 +80,40 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-// 404/403 이 빈 화면으로 보이지 않도록 안내 페이지로 다시 실행한다.
-app.UseStatusCodePagesWithReExecute("/auth/error{0}");
-
 app.UseRouting();
 
 app.UseSession();
 
+if (app.Environment.IsDevelopment())
+    app.UseMiddleware<DevAutoLogin>();
+
 app.UseAuthorization();
 
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+app.MapControllers();
+
+app.MapFallback(async context =>
+{
+    var path = context.Request.Path;
+    if (!HttpMethods.IsGet(context.Request.Method)
+        || path.StartsWithSegments("/api")
+        || path.StartsWithSegments("/Upload")
+        || Path.HasExtension(path.Value))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    var index = Path.Combine(app.Environment.WebRootPath, "app", "index.html");
+    if (!File.Exists(index))
+    {
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        await context.Response.WriteAsync("프런트엔드 빌드 산출물이 없습니다. web/ 에서 npm run build 를 실행하세요.");
+        return;
+    }
+
+    context.Response.ContentType = "text/html; charset=utf-8";
+    await context.Response.SendFileAsync(index);
+});
 
 app.Run();
 return 0;

@@ -34,7 +34,7 @@
 
 ### 2-1. 고정 크기 (본문 표 · 캡션 · 표지 · 목차 · 사양표)
 
-**[wwwroot/css/doc-type.css](../wwwroot/css/doc-type.css) 한 파일만 고칩니다.**
+**[wwwroot/css/doc-type.css](../../wwwroot/css/doc-type.css) 한 파일만 고칩니다.**
 
 ```css
 :root {
@@ -80,7 +80,7 @@ TB_S_MANUAL.BODY_FONT_SIZE
 
 | 범위 | 방법 |
 |---|---|
-| 모든 새 문서의 기본값 | [Models/PreviewModels.cs](../Models/PreviewModels.cs) `HeadingStyle.Defaults()` |
+| 모든 새 문서의 기본값 | [Models/PreviewModels.cs](../../Models/PreviewModels.cs) `HeadingStyle.Defaults()` |
 | 한 문서 전체 | 문서 정보 › 문서 스타일 (→ `TB_S_MANUAL.HEADING_STYLE_JSON`) |
 | 목차 하나 | 편집기 › 목차 수정 › 개별 스타일 (→ `TB_S_SECTION.STYLE_JSON`) |
 
@@ -91,7 +91,7 @@ TB_S_MANUAL.BODY_FONT_SIZE
 
 ### 2-4. PDF 꼬리말
 
-[Controllers/ManualController.cs](../Controllers/ManualController.cs) `BuildPdfFooter()` 의 `font-size:9pt`.
+[Controllers/ManualController.cs](../../Controllers/ManualController.cs) `BuildPdfFooter()` 의 `font-size:9pt`.
 브라우저의 쪽 번호 템플릿은 페이지의 CSS 를 읽지 못해 C# 안에 직접 적혀 있습니다.
 
 ---
@@ -118,7 +118,7 @@ TB_S_MANUAL.BODY_FONT_SIZE
 
 ### 3-2. 사양표는 본문 규칙을 이겨야 한다
 
-사양표(`.ds-spec-block`)도 본문 블록 안에 있으므로 [ds-spec.css](../wwwroot/css/ds-spec.css) 는 다음처럼 작성되어 있습니다.
+사양표(`.ds-spec-block`)도 본문 블록 안에 있으므로 [ds-spec.css](../../wwwroot/css/ds-spec.css) 는 다음처럼 작성되어 있습니다.
 
 - 모든 자식: `.doc-block .ds-spec-block * { font-size: inherit !important }` — 본문 10pt 대신 부모 크기를 물려받게 함
 - 각 부분: `.ds-spec-block .ds-spec-cat` / `.ds-spec-table > thead` / `> tbody` / `.ds-spec-foot` 에 `--ds-size-*` 지정
@@ -138,13 +138,13 @@ TB_S_MANUAL.BODY_FONT_SIZE
 
 | 파일 | 내용 |
 |---|---|
-| [wwwroot/css/doc-type.css](../wwwroot/css/doc-type.css) | **크기 기준값 (CSS 변수)** |
-| [wwwroot/css/preview.css](../wwwroot/css/preview.css) | 미리보기 · PDF 문서 스타일 (본문 · 표지 · 목차 · 표 · 캡션) |
-| [wwwroot/css/editor.css](../wwwroot/css/editor.css) | 편집기 CKEditor 본문 |
-| [wwwroot/css/ds-spec.css](../wwwroot/css/ds-spec.css) | SPECIFICATIONS 사양표 |
-| [Models/PreviewModels.cs](../Models/PreviewModels.cs) | `HeadingStyle.Defaults()`, `ClientDefaults()`, `PreviewViewModel.BodyFontSize` |
-| [Views/Manual/_DocSheet.cshtml](../Views/Manual/_DocSheet.cshtml) | `--doc-font-size` 등 문서별 값을 CSS 변수로 전달 |
-| [wwwroot/js/custom/manual/editor.js](../wwwroot/js/custom/manual/editor.js) | `applyBodyStyle()` — 편집기에 `--doc-font-size` 설정 |
-| [wwwroot/js/custom/manual/detail.js](../wwwroot/js/custom/manual/detail.js) | 문서 스타일 미리보기 (`bodyCss`, `headingCss`) |
-| [Controllers/ManualController.cs](../Controllers/ManualController.cs) | PDF 꼬리말 `BuildPdfFooter()` |
+| [wwwroot/css/doc-type.css](../../wwwroot/css/doc-type.css) | **크기 기준값 (CSS 변수)** |
+| [wwwroot/css/preview.css](../../wwwroot/css/preview.css) | 미리보기 · PDF 문서 스타일 (본문 · 표지 · 목차 · 표 · 캡션) |
+| [wwwroot/css/editor.css](../../wwwroot/css/editor.css) | 편집기 CKEditor 본문 |
+| [wwwroot/css/ds-spec.css](../../wwwroot/css/ds-spec.css) | SPECIFICATIONS 사양표 |
+| [Models/PreviewModels.cs](../../Models/PreviewModels.cs) | `HeadingStyle.Defaults()`, `ClientDefaults()`, `PreviewViewModel.BodyFontSize` |
+| [Views/Manual/_DocSheet.cshtml](../../Views/Manual/_DocSheet.cshtml) | `--doc-font-size` 등 문서별 값을 CSS 변수로 전달 |
+| [wwwroot/js/custom/manual/editor.js](../../wwwroot/js/custom/manual/editor.js) | `applyBodyStyle()` — 편집기에 `--doc-font-size` 설정 |
+| [wwwroot/js/custom/manual/detail.js](../../wwwroot/js/custom/manual/detail.js) | 문서 스타일 미리보기 (`bodyCss`, `headingCss`) |
+| [Controllers/ManualController.cs](../../Controllers/ManualController.cs) | PDF 꼬리말 `BuildPdfFooter()` |
 | `Database/24_body_font_default.sql`, `Database/28_font_carlito.sql` | `BODY_FONT_SIZE` 기본값 · 고정값 |

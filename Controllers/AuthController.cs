@@ -1,12 +1,16 @@
 using ExodusSystemManual.Common;
+using ExodusSystemManual.Controllers.Attributes;
 using ExodusSystemManual.Controllers.Common;
 using ExodusSystemManual.Data;
 using ExodusSystemManual.Models;
 using ExodusSystemManual.Utils;
+using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExodusSystemManual.Controllers;
 
+[Route("api/auth")]
 public class AuthController : BaseController<AuthController>
 {
     private readonly LoginThrottle _throttle;
@@ -22,34 +26,46 @@ public class AuthController : BaseController<AuthController>
         _throttle = throttle;
     }
 
-    [HttpGet]
-    [Route("/auth/sign-in")]
-    public IActionResult SignIn(string? returnUrl)
+    [HttpGet("csrf")]
+    [AllowAnonymous]
+    [Produces("application/json")]
+    public IActionResult Csrf([FromServices] IAntiforgery antiforgery)
     {
-        if (HttpContext.Session.GetString(SessionKeys.IsLogin) == "TRUE")
-            return Redirect("/");
-
-        ViewData["ReturnUrl"] = IsLocalUrl(returnUrl) ? returnUrl : "/";
-        return View();
+        var tokens = antiforgery.GetAndStoreTokens(HttpContext);
+        return JsonOk(new { token = tokens.RequestToken });
     }
 
-    [HttpGet]
-    [Route("/auth/error403")]
-    public IActionResult Error403() => View();
+    [HttpGet("me")]
+    [AjaxAuth]
+    [Produces("application/json")]
+    public IActionResult Me()
+    {
+        if (HttpContext.Session.GetString(SessionKeys.IsLogin) != "TRUE")
+            return JsonFail(StatusCodes.Status401Unauthorized, "로그인이 필요합니다.");
 
-    [HttpGet]
-    [Route("/auth/error404")]
-    public IActionResult Error404() => View();
+        return JsonOk(new
+        {
+            USER_ID = CurrentUserId,
+            FULL_NAME = HttpContext.Session.GetString(SessionKeys.FullName),
+            EMAIL = HttpContext.Session.GetString(SessionKeys.Email),
+            ROLE = CurrentRole,
+            DIVISION = HttpContext.Session.GetString(SessionKeys.Division),
+            TEAM = HttpContext.Session.GetString(SessionKeys.Team),
+        });
+    }
 
-    [HttpGet]
-    [Route("/auth/logout")]
+    [HttpPost("logout")]
+    [AjaxAuth]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
     public IActionResult Logout()
     {
         HttpContext.Session.Clear();
-        return Redirect("/auth/sign-in");
+        return JsonOk();
     }
 
-    [HttpPost]
+    [HttpPost("login")]
+    [AllowAnonymous]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
     public IActionResult UserLogin(UserLoginInputModel input)
@@ -104,10 +120,4 @@ public class AuthController : BaseController<AuthController>
         return JsonOk();
     }
 
-    // 오픈 리다이렉트 차단: 외부 절대 URL 과 //evil.com 형태를 모두 거른다.
-    private bool IsLocalUrl(string? url)
-        => !string.IsNullOrEmpty(url)
-           && url.StartsWith('/')
-           && !url.StartsWith("//")
-           && !url.StartsWith("/\\");
 }

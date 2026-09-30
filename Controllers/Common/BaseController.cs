@@ -48,6 +48,47 @@ public abstract class BaseController<T> : Controller where T : BaseController<T>
             .FirstOrDefault();
     }
 
+    protected string CurrentUserName
+        => HttpContext.Session.GetString(SessionKeys.FullName) ?? CurrentUserId ?? "시스템";
+
+    /// 읽기 API 용. 통과하면 null, 아니면 404/403 응답을 돌려준다.
+    protected IActionResult? DenyIfNotReadable(string mId, out ManualAccess? access)
+    {
+        access = GetManualAccess(mId);
+        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
+        if (access.CAN_READ != "Y") return JsonFail(StatusCodes.Status403Forbidden, "열람 권한이 없습니다.");
+        return null;
+    }
+
+    protected IActionResult? DenyIfNotReadable(string mId) => DenyIfNotReadable(mId, out _);
+
+    /// 페이지 요청용. 통과하면 null, 아니면 404 / 403 화면으로 보낸다.
+    protected IActionResult? DenyPageIfNotReadable(string mId)
+    {
+        var access = GetManualAccess(mId);
+        if (access is null) return NotFound();
+        if (access.CAN_READ != "Y") return Redirect("/auth/error403");
+        return null;
+    }
+
+    /// 쓰기 API 용. 통과하면 null. 문서 단위 검사이며 목차 단위는 프로시저가 다시 검사한다.
+    protected IActionResult? DenyIfNotEditable(string mId)
+    {
+        var access = GetManualAccess(mId);
+        if (access is null) return JsonFail(StatusCodes.Status404NotFound, "문서를 찾을 수 없습니다.");
+        if (access.MEMBER_ROLE is null && access.USER_ROLE != UserRoles.Admin)
+            return JsonFail(StatusCodes.Status403Forbidden, "이 문서의 참여자가 아닙니다.");
+        if (access.CAN_EDIT != "Y")
+            return JsonFail(StatusCodes.Status403Forbidden, "작성(DRAFT) 상태의 문서만 수정할 수 있습니다.");
+        return null;
+    }
+
+    /// 쓰기 프로시저의 ResultModel 을 응답으로 바꾼다.
+    protected IActionResult ToJson(ResultModel? result)
+        => result is null || result.Success == 0
+            ? JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "요청을 처리하지 못했습니다.")
+            : JsonOk();
+
     protected IActionResult JsonOk(object? data = null)
     {
         NoStore();
@@ -61,7 +102,7 @@ public abstract class BaseController<T> : Controller where T : BaseController<T>
     }
 
     /// 로그인 사용자별 데이터라 브라우저/프록시에 남으면 안 된다.
-    private void NoStore()
+    protected void NoStore()
         => Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
 
     protected string FirstError()

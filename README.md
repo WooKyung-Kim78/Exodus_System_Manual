@@ -29,30 +29,7 @@ Razor 런타임 컴파일을 켜 두어 `.cshtml` 수정은 새로고침만으�
 ### 1. 데이터베이스
 
 `Database/` 폴더의 스크립트를 **번호 순서대로** 실행합니다. 모두 반복 실행해도 안전합니다.
-
-```
-00_alter_user.sql              기존 TB_S_USER 보정 (PK/UNIQUE/제약)
-01_tables.sql                  테이블 생성
-02_procedures.sql              기본 프로시저
-03_seed.sql                    관리자 계정 뼈대, SMTP 설정 행
-04_procedures_phase2.sql       목록 조회 프로시저 분리
-05_seed_testusers.sql          테스트 사용자 5명 (운영 배포 전 삭제)
-06_procedures_notify.sql       메일 수신자 조회
-07_alter_document_model.sql    캔버스 → 문서형 전환 (목차 계층/블록 순서)
-08_alter_section_style.sql     목차별 제목 스타일
-09_label_cooling_template_role.sql  Label/Cooling 고정, 목차 템플릿, 역할
-10_template_assignee.sql       템플릿 담당 지정
-11_template_team_only.sql      템플릿 담당자 제거 (팀만 유지)
-12_section_team_permission.sql 목차 담당 팀 기반 편집 권한
-13_drop_member_model.sql       참여자 테이블 사용 중단, 팀 기반으로 전환
-14_manual_visibility.sql       문서 열람 범위 제한
-15_section_history.sql         목차 수정 이력 조회
-16_cover_page.sql              표지 구성 (로고·고정 문구·제품 이미지)
-17_body_font.sql               본문 글꼴
-18_body_spacing.sql            행간·자간, 글자 크기 고정
-19_font_calibri.sql            Calibri 추가
-28_font_carlito.sql            본문 글꼴 Calibri → Carlito (오픈 라이선스)
-```
+`00` 은 기존 사용자 테이블 보정, `01`~ 은 테이블·프로시저·시드입니다. 파일 머리의 주석에 각 스크립트의 목적이 적혀 있습니다.
 
 > 05 번은 테스트 계정입니다. 운영 환경에 올리기 전에 삭제하거나 비밀번호를 교체하세요.
 
@@ -103,6 +80,7 @@ dotnet watch run --launch-profile https
 | 역할 | 설명 |
 |---|---|
 | ADMIN | 전체 열람·수정, 관리 메뉴 사용 |
+| SUPPORTER | 전체 열람, 일부 관리 메뉴 사용 (수정 권한은 담당 팀 기준) |
 | USER | 담당 팀 문서만 열람·수정 |
 | READER | 열람 전용 |
 
@@ -148,7 +126,7 @@ Label(Exodus/OEM) · Cooling(Air/Liquid) 조합별로 목차를 미리 정의합
 | 항목 | 값 |
 |---|---|
 | 본문 글꼴 | Arial · Carlito(Calibri 호환) · Verdana · Tahoma · Georgia · Times New Roman (기본 Carlito) |
-| 본문 글자 크기 | 10pt 고정 (편집기에서 변경 불가) |
+| 본문 글자 크기 | 12pt 고정 (편집기에서 변경 불가) |
 | 행간 | 1.0 ~ 3.0 |
 | 자간 | -1.0 ~ 3.0px |
 | 제목 스타일 | 대/중/소제목별 크기·색·굵기·밑줄 |
@@ -185,54 +163,9 @@ Label(Exodus/OEM) · Cooling(Air/Liquid) 조합별로 목차를 미리 정의합
 
 ---
 
-## 보안 관련 결정
-
-참고한 기존 사내 코드에서 의도적으로 바꾼 부분입니다.
-
-- 관리자 우회 로그인 제거 — 아이디가 `admin` 이면 통과시키는 분기를 넣지 않았습니다
-- 비밀번호는 PBKDF2 (기존 무염 SHA512 대체)
-- 로그인 시도 제한 — 계정+IP 기준 15분에 5회
-- 로그인 성공 시 세션 재발급 (세션 고정 방어)
-- `returnUrl` 은 `IsLocalUrl` 로 검사 (오픈 리다이렉트 방어)
-- 본문 HTML 은 저장할 때와 렌더 직전 두 번 정제
-- 이미지 업로드는 확장자뿐 아니라 **매직 바이트**까지 확인
-- 권한 검사를 컨트롤러와 저장 프로시저 양쪽에서 수행
-
-### 운영 배포 전 확인할 것
+## 운영 배포 전 확인할 것
 
 - [ ] `05_seed_testusers.sql` 로 만든 계정 삭제 또는 비밀번호 교체
 - [ ] DataProtection 키 암호화 설정 (현재 시작 시 경고 로그가 남습니다)
 - [ ] 정식 인증서 적용 후 `TrustServerCertificate=True` 제거
 - [ ] `SYSTEM_SMTP_SCOPE` 를 실제 발송으로 전환
-
----
-
-## 폴더 구조
-
-```
-Bootstrap/          seed-admin 명령
-Common/             세션 키, 역할 상수
-Controllers/        Auth · Manual · Editor · Admin · Home
-  Attributes/       [Auth] [AjaxAuth]
-  Common/           BaseController
-Data/               ApplicationDbContext (프로시저 결과 매핑 포함)
-Database/           00~19 SQL 스크립트
-Models/             엔티티 및 DTO
-Utils/              PasswordHelper · LoginThrottle · HtmlSanitize · ImageUpload · SendMail · MailTemplates
-Views/              Razor 뷰
-wwwroot/
-  assets/           Metronic 템플릿
-  css/              app · editor · preview
-  js/custom/        화면별 Vue 스크립트
-```
-
-### 알아두면 좋은 점
-
-**저장 프로시저 결과 매핑** — 프로시저 결과는 키 없는 엔티티(`HasNoKey`)로 받습니다.
-모델의 모든 속성에 해당하는 컬럼이 결과 집합에 있어야 하며, 하나라도 없으면 500 오류가 납니다.
-모델에 속성을 추가했다면 대응하는 SQL 스크립트를 먼저 실행하세요.
-
-**여러 결과 집합** — `FromSqlRaw` 는 첫 번째 결과 집합만 읽습니다. 프로시저 하나가 여러 개를 반환하도록 만들지 마세요.
-
-**바이너리 파라미터** — `binary(8)` 같은 타입에 `DBNull.Value` 를 위치 인자로 넘기면 nvarchar 로 전달되어 변환 오류가 납니다.
-`SqlParameter` 로 타입을 명시해야 합니다.
