@@ -34,6 +34,6 @@ EXODUS_TEST_DB="<전용 테스트 DB 접속 문자열>" dotnet test tests/Exodus
 - 데이터를 만드는 테스트는 트랜잭션으로 감싸 롤백하거나, 고유 ID 로 만들고 정리한다.
 - 접속 문자열을 코드·로그·문서에 남기지 않는다.
 
-## 아직 없는 것
+## HTTP·E2E
 
-- 컨트롤러/HTTP 수준 테스트와 Playwright e2e ([known-issues.md](../known-issues.md)). 그 전에는 [verification.md](verification.md) 의 수동 확인.
+Playwright E2E는 `web/e2e/`에 있으며, 전용 개발/테스트 DB에서만 실행한다. 실행 방법과 골든 이미지 갱신은 [e2e.md](e2e.md)를 따른다. 컨트롤러 HTTP 수준 테스트(`WebApplicationFactory`) 확대는 [known-issues.md](../known-issues.md)에 남아 있다.

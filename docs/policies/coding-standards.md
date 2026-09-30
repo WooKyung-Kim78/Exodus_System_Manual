@@ -18,9 +18,9 @@
 |---|---|
 | 컨트롤러 간 공통 (권한 거부 응답, 결과→JSON 변환, 접근 조회) | `BaseController<T>` |
 | 컨트롤러 밖에서도 쓰는 도메인 로직 (HTML 정제, 사양 생성, 업로드) | `Utils/` 클래스 + DI 등록 |
-| 서버·클라이언트가 같이 쓰는 기본값/상수 | 서버(C#)를 원본으로 두고 `@Json.Serialize` 로 내려준다 (`HeadingStyle.ClientDefaults`) |
-| 화면 간 공통 JS (라벨 맵, 포맷 함수, 모달 헬퍼) | `wwwroot/js/common/` |
-| 문서 모양 (미리보기/PDF/편집기) | 부분 뷰 `_DocSheet.cshtml` + CSS 변수 |
+| 서버·클라이언트가 같이 쓰는 기본값/상수 | 서버(C#)를 원본으로 두고 `/api/bootstrap`으로 내려준다 (`HeadingStyle.ClientDefaults`) |
+| 화면 간 공통 TS (라벨 맵, 포맷 함수, 모달 헬퍼) | `web/src/features/` 또는 `web/src/design-system/` |
+| 문서 모양 (미리보기/PDF/편집기) | `DocumentHtmlBuilder` + CSS 변수 |
 | 여러 프로시저가 공유하는 규칙 | SQL 함수 `UFN_S_*` (권한 판정이 기존 예) |
 | 크기·색 등 스타일 값 | CSS 변수 (`doc-type.css`) |
 
@@ -33,15 +33,14 @@
 
 - `Nullable` 활성. DTO 는 `= null!` (필수) / `?` (선택) 로 의도를 드러낸다. 새 경고를 만들지 않는다.
 - 파일 범위 `namespace ExodusSystemManual.<폴더>;`. 컨트롤러 클래스 위에 `[Route]`, 액션은 `[HttpGet("kebab")]` 등 명시.
-- 모든 쓰기 액션: `[AjaxAuth] [HttpPost/Delete] [ValidateAntiForgeryToken] [Produces("application/json")]`. 페이지: `[Auth]`.
+- 모든 쓰기 액션: `[AjaxAuth] [HttpPost/Delete] [ValidateAntiForgeryToken] [Produces("application/json")]`.
 - 예외는 **경계(외부 시스템 호출: Playwright, datasheet DB, SMTP)에서만** 잡고 `_logger.LogError(ex, "...({MID})", mid)` 후 JsonFail. 업무 실패는 예외가 아니라 `ResultModel` 로.
 - 로그는 구조적 템플릿(`{MID}`) 사용, 문자열 보간 금지. 비밀번호·토큰·HTML 본문은 로그에 남기지 않는다.
 - 사용자에게 보이는 메시지는 **한국어**, 존댓말 어미 없이 간결하게 (기존 문구 톤 유지).
 
-## 4. JS / Razor / SQL 스타일
+## 4. TypeScript / SQL 스타일
 
-- JS: [frontend.md](../architecture/frontend.md) 의 AJAX·Vue 패턴. `var`/`function` 주류인 파일에 화살표 함수·`let` 을 섞지 않는다.
-- `.cshtml` 안에 긴 인라인 `<script>`/`<style>` 를 만들지 않는다 — 별도 파일로.
+- TypeScript: [frontend.md](../architecture/frontend.md)의 API·Vue 패턴을 따른다. 전역 스크립트나 jQuery를 새로 만들지 않는다.
 - SQL: `SET NOCOUNT ON`, `CREATE OR ALTER`, 대문자 키워드·컬럼, 소프트 삭제 조건, 감사 컬럼 갱신. 자세한 건 [database.md](../architecture/database.md).
 
 ## 5. 주석·문서

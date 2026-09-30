@@ -159,7 +159,7 @@ wwwroot/css, assets/fonts  # 문서(미리보기/PDF)용 CSS·Carlito 폰트만 
 1. 스모크: 문서 목록 진입, 상세, 미리보기(iframe 렌더) 콘솔 오류 0.
 2. 권한 매트릭스: ADMIN / 담당 팀 USER / 타 팀 USER / READER × (읽기, 목차 편집, 블록 저장, 상태 변경). **UI 가 숨겨도 API 가 막는지(`request` 로 직접 호출해 403)** 를 함께 검증 — "권한은 서버가 결정" 규칙.
 3. 편집기: 블록 편집·저장, 이미지 업로드, `ROW_VER` 충돌(409) 안내, Word 붙여넣기 서식 제거, 왕복 후 서식 보존.
-4. PDF: 생성 성공 + 골든 PNG 비교 (3장), 목차 쪽 번호.
+4. PDF: 생성 성공, 목차 쪽 번호와 대표 문서의 로컬 시각 확인.
 5. 관리자 화면: 사용자·코드·설정·목차 템플릿 CRUD.
 6. 시각 회귀: 디자인 시스템 스타일가이드 페이지 스냅샷.
 
@@ -179,16 +179,16 @@ wwwroot/css, assets/fonts  # 문서(미리보기/PDF)용 CSS·Carlito 폰트만 
 
 | 단계 | 상태 | 구현·검증 현황 | 남은 항목 |
 | --- | --- | --- | --- |
-| P0 기준선 | 미착수 | API `[AjaxAuth]` 리플렉션 테스트는 추가됨 | 대표 문서 PDF 골든 PNG, 현 화면 스크린샷 |
-| P1 기반 | 부분 완료 | Vite/Vue 3/TS/Tailwind, Node 24, `/api/health`·csrf·me·bootstrap, SPA fallback, DevAutoLogin 안전장치 테스트, Playwright·Chromium 설치 및 스모크 실행 시도 | 개발 DB TLS 인증서 신뢰 오류 해소 후 스모크 E2E 통과 |
-| P2 디자인 시스템 | 부분 완료 | CSS 토큰과 `/dev/styleguide` 화면 구현, SPA·서버 fallback의 Development 전용 노출 제한, Button·Input·Badge·EmptyState·Skeleton 공통 컴포넌트 | Modal·Drawer·Table·Toast·Tabs·Tooltip·ConfirmDialog, DB 연결 정상화 후 시각 회귀 E2E |
-| P3 API 재편 | 부분 완료 | Manual/Editor/Admin/Auth API를 `/api`로 이동하고 API 인증 선언 테스트 추가 | 구 경로 병행 여부 정리, `api-routes.md` 경로표, 실제 API 회귀 확인 |
-| P4 소형 화면 | 부분 완료 | sign-in·403/404·문서 목록, 사용자·코드·메일 설정·목차 템플릿 Vue 화면 구현 | 화면별 E2E와 구 cshtml/JS 삭제 |
-| P5 문서 렌더링 | 부분 완료 | `DocumentHtmlBuilder`, `/api/manual/document-html`, iframe 미리보기, 빌더 단위 테스트 구현 | Metronic CSS 완전 분리, 골든 PDF 비교 |
-| P6 대형 화면 | 부분 완료 | 문서 헤더 수정/삭제, CKEditor Vue 래퍼, 텍스트 블록 저장·삭제 연결 | 문서 상세의 표지·알림·datasheet, 편집기 이미지·표·목차·정렬·이력·스타일 기능, 권한/E2E 전체 |
-| P7 제거·정리 | 미착수 | 없음 | Razor/Views, 기존 JS, jQuery/Bootstrap/Metronic·벤더 자산 제거 및 전수 문서 대조 |
+| P0 기준선 | 진행 중 | `main` (`3064132`)을 별도 작업 트리에서 실제 admin 로그인으로 열어 홈·문서 목록·미리보기 흐름을 대조했다. 누락됐던 Dashboard, New Manual 입력 항목, 미리보기의 문서 정보·연속/페이지 보기·인쇄 흐름을 SPA에 복원했다. API `[AjaxAuth]` 리플렉션 테스트도 추가됨 | 대표 문서 PDF와 화면의 로컬 시각 대조 |
+| P1 기반 | 완료 | Vite/Vue 3/TS/Tailwind, Node 24, `/api/health`·csrf·me·bootstrap, SPA fallback, DevAutoLogin 안전장치 테스트, Playwright·Chromium 설치 및 스모크 E2E 통과 | - |
+| P2 디자인 시스템 | 완료 | CSS 토큰과 `/dev/styleguide` 화면 구현, SPA·서버 fallback의 Development 전용 노출 제한, Button·Input·Badge·EmptyState·Skeleton·Dialog·ConfirmDialog·Drawer·Table·Toast·Tabs·Tooltip 공통 컴포넌트, 전체 삭제·복구 확인 동작 이식, 스타일가이드 골든 이미지 생성·비교 | - |
+| P3 API 재편 | 구현 완료 · 검증 진행 | Manual/Editor/Admin/Auth API를 `/api`로 이동하고 API 인증 선언 테스트 추가, `api-routes.md` 경로표 작성, 메뉴·문서·관리 조회 API E2E 통과, JSON 요청 `[FromBody]`·CSRF 필터 등록 보완 및 문서/목차/블록 쓰기·충돌 E2E 통과 | 관리자 CRUD API 회귀 확인 |
+| P4 소형 화면 | 구현 완료 · main 기능 대조 진행 | sign-in·403/404·문서 목록, 사용자·코드·메일 설정·목차 템플릿 Vue 화면 구현. `main`과 대조해 로그인 안내/플랫폼 설명/저작권, 문서 생성 모달의 Model/Job/Label/Cooling/Option/Version/Page Size와 목록 열을 복원했고, 실제 admin 로그인 후 해당 모달·문서·관리자 화면 순회 E2E가 통과했다. 구 cshtml/JS는 제거됨 | 관리자 CRUD 동작의 세부 E2E, 화면별 시각 대조 |
+| P5 문서 렌더링 | 구현 완료 · main 기능 대조 진행 | `DocumentHtmlBuilder`, `/api/manual/document-html`, iframe 미리보기, 빌더 단위 테스트 구현, Metronic CSS 제거, PDF 생성 E2E. `main`의 문서 정보 이동·연속/페이지 보기·인쇄·PDF 다운로드 흐름도 복원 | 골든 PDF 비교와 대표 문서 시각 대조 |
+| P6 대형 화면 | 구현 완료 · 검증 진행 | 문서 헤더·표지·알림·datasheet·공통 스타일, CKEditor Vue 래퍼, 텍스트/이미지/표 블록, 목차·정렬·이력·개별 스타일 이식 및 스모크 E2E 통과. 실제 문서/목차/블록 저장·HTML 정제·409 충돌·삭제 E2E 통과 | 업로드를 포함한 전체 E2E |
+| P7 제거·정리 | 구현 완료 · 문서 대조 대기 | Razor Views·기존 JS·jQuery/Bootstrap/Metronic·벤더 자산과 미사용 `editor.css` 삭제, SPA·권한·디자인 시스템·글자 크기 문서 및 API 경로표 갱신 | PDF 골든과 외부 계정 조건을 제외한 문서·검증 전수 대조 |
 
-최근 검증: `dotnet test tests/ExodusSystemManual.Tests`는 50 통과·DB 통합 1 skip, `npm run build`와 `npm run typecheck`는 최근 변경 시 통과했다. Playwright Chromium을 설치하고 `npm run e2e`를 실행했다. `/api/health`는 통과했지만 자동 로그인 시 개발 DB의 TLS 인증서가 신뢰되지 않아 `GET /api/auth/me` 이전에 500으로 중단됐다. 접속 문자열·자격 증명은 기록하지 않는다. DB TLS 연결을 정상화한 뒤 스모크 E2E와 PDF 골든 비교를 재실행한다.
+최근 검증: `dotnet build`, `dotnet test tests/ExodusSystemManual.Tests`는 64 통과·DB 통합 1 skip, `npm run typecheck`, `npm run test`, `npm run build`가 통과했다. Playwright 전체 E2E는 실제 admin 로그인 후 Dashboard·문서 생성 모달·문서 목록·상세·미리보기 iframe 및 페이지 보기·편집기·관리 화면 순회, 403/404·역할별 메뉴·직접 API 403·PDF 생성·스타일가이드 상호작용과 문서/목차/블록 쓰기·정제·409 충돌·삭제를 확인해 13 통과했다. READER 권한 E2E는 전용 계정이 있을 때만 실행하며 현재 명시적으로 skip된다. 접속 문자열·자격 증명은 기록하지 않는다.
 
 | 단계                 | 내용                                                                                                                                                                                                    | 완료 기준                                                                |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ---- | ----- | ----------------- | ------------------------------------------ |

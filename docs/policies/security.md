@@ -11,9 +11,9 @@
 | 로그인 제한 | 계정+IP 15분 5회 (`LoginThrottle`) | Utils/LoginThrottle |
 | 세션 | 로그인 성공 시 `Session.Clear()` 후 재작성 (세션 고정 방어) | AuthController |
 | 리다이렉트 | `returnUrl` 은 `IsLocalUrl` 검사 후에만 사용 | AuthController |
-| CSRF | 쓰기 액션 `[ValidateAntiForgeryToken]`. 화면은 `ajaxSetting.js` 가 헤더 자동 부착 | Program.cs |
+| CSRF | 쓰기 액션 `[ValidateAntiForgeryToken]`. Vue API 클라이언트가 토큰 헤더를 자동 부착 | Program.cs |
 | HTML | 사용자 HTML 은 **저장 시 + 렌더 직전 두 번** `HtmlSanitize.Clean`. 화이트리스트 밖 태그/속성/CSS/스킴(`javascript:`, `data:`)은 제거됨 | Utils/HtmlSanitize |
-| Razor 출력 | `@Html.Raw` 를 새로 쓰지 않는다. 불가피하면 반드시 정제된 값만 | Views |
+| 문서 HTML | `DocumentHtmlBuilder`는 동적 값을 HTML 인코딩하고, 본문 HTML은 반드시 정제된 값만 삽입 | Utils/DocumentHtmlBuilder |
 | 업로드 | 확장자 + **매직 바이트** 검사, 크기 제한, 업로드 경로는 서버가 생성(사용자 파일명으로 경로 만들지 않음) | Utils/ImageUpload |
 | SQL | `FromSqlRaw` 는 위치 인자(`{0}`)나 `SqlParameter` 로만. 문자열 보간/연결로 SQL 조립 금지 | database.md |
 | 권한 | 서버에서 항상 재검사. 클라이언트가 보낸 사용자 ID·역할·권한 플래그를 믿지 않는다 | permissions.md |

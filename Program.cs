@@ -28,7 +28,9 @@ var datasheetConnectionString = builder.Configuration.GetConnectionString("Datas
 builder.Services.AddDbContext<DatasheetDbContext>(o => o.UseSqlServer(
     string.IsNullOrWhiteSpace(datasheetConnectionString) ? connectionString : datasheetConnectionString));
 
-builder.Services.AddControllers()
+// ValidateAntiForgeryToken 필터는 ViewFeatures 서비스가 필요하다. Razor 화면을 쓰지는 않지만
+// JSON 쓰기 API의 CSRF 검증을 위해 ControllersWithViews 등록을 유지한다.
+builder.Services.AddControllersWithViews()
     .AddJsonOptions(o => o.JsonSerializerOptions.PropertyNamingPolicy = null);
 
 builder.Services.AddDistributedMemoryCache();
@@ -39,7 +41,7 @@ builder.Services.AddSingleton<PdfRenderer>();
 builder.Services.AddScoped<SendMail>();
 builder.Services.AddScoped<DatasheetSpec>();
 
-// ajaxSetting.js 가 이 헤더로 토큰을 실어 보낸다.
+// Vue API 클라이언트가 이 헤더로 토큰을 실어 보낸다.
 builder.Services.AddAntiforgery(o => o.HeaderName = "RequestVerificationToken");
 
 builder.Services.AddSession(options =>

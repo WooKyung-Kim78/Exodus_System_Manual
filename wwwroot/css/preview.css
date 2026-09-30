@@ -1,4 +1,4 @@
-/* 화면 미리보기와 서버 PDF(Views/Manual/Pdf.cshtml) 공통 스타일.
+/* iframe 미리보기와 서버 PDF 공통 스타일.
    PDF 는 Chromium 이 print 미디어로 찍으므로 아래 @media print 가 적용된다. */
 /* 머리말·꼬리말 자리는 페이지마다 같아야 하므로 종이 여백으로 잡는다.
    시트에 위·아래 padding 을 주면 첫 장과 끝 장에만 여백이 생긴다.
@@ -215,7 +215,7 @@
     vertical-align: middle !important;
 }
 
-/* figure.table 의 class 가 Bootstrap 의 .table 에 걸려 행·열 배경이 collapse 된
+/* figure.table 의 class 가 문서 표 규칙에 걸려 행·열 배경이 collapse 된
    테두리를 덮는다. 맨 아래 행의 선이 지워지는 원인이다. */
 .doc-block table thead,
 .doc-block table tbody,

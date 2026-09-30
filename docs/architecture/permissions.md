@@ -4,16 +4,17 @@
 
 | 단계 | 위치 | 역할 |
 |---|---|---|
-| 1. 로그인/역할 | `[Auth]` / `[AjaxAuth("ADMIN, SUPPORTER")]` | 세션 `IS_LOGIN`, `ROLE` 확인. 페이지는 리다이렉트, AJAX 는 401/403 |
+| 1. 로그인/역할 | `[AjaxAuth("ADMIN, SUPPORTER")]` | 세션 `IS_LOGIN`, `ROLE` 확인. API는 401/403, SPA가 로그인·오류 화면을 표시 |
 | 2. 문서 단위 | `GetManualAccess(mid)` → `CAN_READ` / `CAN_EDIT` | `USP_S_SELECT_MANUAL_ACCESS` 가 판정 |
 | 3. 목차/블록 단위 | 쓰기 프로시저 내부 `UFN_S_CAN_EDIT_SECTION` | 목차 담당 팀이 아니면 프로시저가 `Success=0` 반환 |
 
 ## 역할 ([Common/SessionKeys.cs](../../Common/SessionKeys.cs))
 
 `ADMIN` · `SUPPORTER` · `USER` · `READER`.
-- 관리 화면: `ADMIN, SUPPORTER` 는 코드/설정/템플릿 일부, 사용자·역할 관리는 `ADMIN` 만 — 컨트롤러 `[Auth]` 인자로 구분돼 있다. 기존 액션의 지정을 기준으로 삼는다.
+- 관리 API: `ADMIN, SUPPORTER` 는 코드/설정/템플릿 일부, 사용자·역할 관리는 `ADMIN` 만 — 컨트롤러 `[AjaxAuth]` 인자를 기준으로 삼는다.
 - 역할은 로그인 시 세션에 **복사**된다. 역할을 바꿔도 대상 사용자가 다시 로그인해야 반영된다.
-- 사용자는 문자열 세션 키를 `SessionKeys` 상수로만 접근한다. 문자열 리터럴(`GetString("ROLE")`)은 `_LayoutMain.cshtml`, `Home/Index.cshtml`, `ManualController.CurrentUserName` 에 남아 있다 — 새로 늘리지 않는다.
+- 사용자는 문자열 세션 키를 `SessionKeys` 상수로만 접근한다. 문자열 리터럴을 새로 만들지 않는다.
+- `/api/auth/me`는 세션 역할에 따라 `MENUS`와 `CAPABILITIES`를 함께 반환한다. SPA 사이드바와 라우터 가드는 이 값을 UX 용도로만 사용하며, 실제 API 차단은 `[AjaxAuth]`가 수행한다.
 
 ## 문서 접근 규칙 (DB 함수가 원본)
 

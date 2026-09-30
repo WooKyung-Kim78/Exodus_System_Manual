@@ -1,4 +1,0 @@
-﻿@{
-    var routeUrl = Url.RouteUrl(ViewContext.RouteData.Values)?.ToLowerInvariant() ?? string.Empty;
-    Layout = routeUrl.StartsWith("/auth") ? "_LayoutAuth" : "_LayoutMain";
-}

@@ -176,7 +176,7 @@ public class ManualController : BaseController<ManualController>
     [HttpPost("create")]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
-    public IActionResult CreateNew(InputNewManual input)
+    public IActionResult CreateNew([FromBody] InputNewManual input)
     {
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 
@@ -226,7 +226,7 @@ public class ManualController : BaseController<ManualController>
     [HttpPost("header")]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
-    public IActionResult UpdateHeader(InputManualHeader input)
+    public IActionResult UpdateHeader([FromBody] InputManualHeader input)
     {
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 

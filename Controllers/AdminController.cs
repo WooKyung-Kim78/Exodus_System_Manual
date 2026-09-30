@@ -62,7 +62,7 @@ public class AdminController : BaseController<AdminController>
     [HttpPost("setting/mail")]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
-    public IActionResult SaveMailSetting(InputMailSetting input)
+    public IActionResult SaveMailSetting([FromBody] InputMailSetting input)
     {
         if (input.SYSTEM_SMTP_SCOPE is not ("T" or "P"))
             return JsonFail(StatusCodes.Status400BadRequest, "적용 범위 값이 올바르지 않습니다.");
@@ -164,7 +164,7 @@ public class AdminController : BaseController<AdminController>
     [HttpPost("section-template")]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
-    public IActionResult MergeSectionTemplate(InputSectionTemplate input)
+    public IActionResult MergeSectionTemplate([FromBody] InputSectionTemplate input)
     {
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 
@@ -267,7 +267,7 @@ public class AdminController : BaseController<AdminController>
     [HttpPost("user")]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
-    public IActionResult SaveUser(InputUserAccount input)
+    public IActionResult SaveUser([FromBody] InputUserAccount input)
     {
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 
@@ -306,7 +306,7 @@ public class AdminController : BaseController<AdminController>
     [HttpPost("user/password")]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
-    public IActionResult ResetUserPassword(InputUserPassword input)
+    public IActionResult ResetUserPassword([FromBody] InputUserPassword input)
     {
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 
@@ -401,7 +401,7 @@ public class AdminController : BaseController<AdminController>
     [HttpPost("code")]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
-    public IActionResult MergeCode(InputCommonCode input)
+    public IActionResult MergeCode([FromBody] InputCommonCode input)
     {
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 

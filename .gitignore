@@ -423,6 +423,12 @@ autom4te.cache/
 *.tar.gz
 tarballs/
 test-results/
+.playwright-cli/
+web/.playwright-cli/
+output/playwright/
+web/output/playwright/
+web/e2e/styleguide.spec.ts-snapshots/
+M000000021
 
 # Mac bundle stuff
 *.dmg

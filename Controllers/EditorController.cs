@@ -77,7 +77,7 @@ public class EditorController : BaseController<EditorController>
     [HttpPost("section")]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
-    public IActionResult MergeSection(InputSection input)
+    public IActionResult MergeSection([FromBody] InputSection input)
     {
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 
@@ -201,7 +201,7 @@ public class EditorController : BaseController<EditorController>
     [HttpPost("block")]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
-    public IActionResult MergeBlock(InputElement input)
+    public IActionResult MergeBlock([FromBody] InputElement input)
     {
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 
@@ -262,7 +262,7 @@ public class EditorController : BaseController<EditorController>
     [HttpPost("block/order")]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
-    public IActionResult UpdateBlockOrder(InputOrderBatch input)
+    public IActionResult UpdateBlockOrder([FromBody] InputOrderBatch input)
     {
         if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
 

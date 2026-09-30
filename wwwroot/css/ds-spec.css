@@ -1,4 +1,4 @@
-/* datasheet(exodus_datasheet Views/Workspace/Preview.cshtml) 의 사양표 모양. 크기 기준값은 doc-type.css 의 --ds-size-*.
+/* datasheet 사양표 모양. 크기 기준값은 doc-type.css 의 --ds-size-*.
    datasheet 는 px 기준 화면을 0.8 배로 줄여 PDF 로 찍으므로 글자 크기는 px × 0.8 을 pt 로 옮겼다.
    미리보기(.doc-block *)가 글꼴·크기를 !important 로 고정하므로 여기서도 더 구체적인 선택자와 !important 를 쓴다. */
 

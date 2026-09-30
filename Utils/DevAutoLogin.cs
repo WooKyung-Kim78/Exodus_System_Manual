@@ -29,7 +29,8 @@ public sealed class DevAutoLogin
         var requestedUserId = context.Request.Headers["X-Dev-User"].FirstOrDefault();
         if (string.Equals(requestedUserId, "none", StringComparison.OrdinalIgnoreCase))
         {
-            context.Session.Clear();
+            // 이 헤더는 자동 로그인을 억제한다. 로그인 E2E에서 모든 요청에 붙으므로
+            // 여기서 세션을 지우면 로그인 POST 직후의 /api/auth/me도 로그아웃된다.
             await _next(context);
             return;
         }

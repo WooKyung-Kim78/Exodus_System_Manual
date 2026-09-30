@@ -11,16 +11,16 @@
 
 | 영역 | 사용 기술 |
 |---|---|
-| 런타임 | .NET 8 (ASP.NET Core MVC + Razor) |
+| 런타임 | .NET 8 (ASP.NET Core JSON API) |
 | 데이터 접근 | EF Core 8 (SqlServer) — 모든 읽기/쓰기를 저장 프로시저로 처리 |
 | 데이터베이스 | SQL Server |
-| 프런트엔드 | Vue 2.7 (전역 스크립트), jQuery, Bootstrap 5, Metronic 8 |
-| 본문 편집기 | CKEditor 5 (ESM 빌드, import map 으로 로드) |
+| 프런트엔드 | Vue 3 + TypeScript + Vite + Tailwind v4 |
+| 본문 편집기 | CKEditor 5 Vue 컴포넌트 (GPL) |
 | PDF | Microsoft.Playwright (서버에서 Headless Chromium 으로 생성) |
 | 메일 | MailKit |
 | HTML 정제 | HtmlSanitizer (Ganss.Xss) |
 
-Razor 런타임 컴파일을 켜 두어 `.cshtml` 수정은 새로고침만으로 반영됩니다. `.cs` 는 재시작이 필요합니다.
+화면 소스는 `web/`의 Vue SPA입니다. `npm run dev --prefix web`으로 Vite 개발 서버를 실행하고, C# 변경은 서버를 재시작합니다.
 
 ---
 

@@ -21,4 +21,4 @@ Development 자동 로그인은 loopback 요청과 `Dev:AutoLoginUserId` 로컬 
 
 E2E가 문서를 만들면 `E2E-<timestamp>` 접두사를 쓰고 테스트가 끝날 때 삭제한다. 운영·공유 DB에는 E2E 쓰기 테스트를 실행하지 않는다.
 
-PDF 회귀 테스트의 골든 PNG는 `web/e2e/__golden__/`에 둔다. 대표 A4/Letter 문서, 사양 목차, 이미지와 표를 포함해야 하며, 변경 사유와 함께만 갱신한다.
+로컬 스크린샷·Playwright 산출물은 `.gitignore` 대상이며 커밋하지 않는다. PDF E2E는 생성 성공과 응답 형식을 검증하고, 대표 문서의 시각 확인은 전용 개발/테스트 DB에서 사람이 수행한다.

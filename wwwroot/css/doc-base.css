@@ -1,4 +1,4 @@
-/* Metronic 제거 후 문서 렌더링에 필요한 최소 reset. */
+/* 문서 렌더링에 필요한 최소 reset. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 img { max-width: 100%; }

@@ -48,7 +48,12 @@ public class ApplicationDbContext : DbContext
         // 저장 프로시저 결과는 테이블이 아니므로 키 없이 매핑한다.
         modelBuilder.Entity<ResultModel>().HasNoKey().ToView(null);
         modelBuilder.Entity<ManualAccess>().HasNoKey().ToView(null);
-        modelBuilder.Entity<ManualHeader>().HasNoKey().ToView(null);
+        modelBuilder.Entity<ManualHeader>(entity =>
+        {
+            entity.HasNoKey().ToView(null);
+            entity.Property(item => item.BODY_LINE_HEIGHT).HasPrecision(4, 1);
+            entity.Property(item => item.BODY_LETTER_SPACING).HasPrecision(4, 1);
+        });
         modelBuilder.Entity<ManualListItem>().HasNoKey().ToView(null);
         modelBuilder.Entity<ManualMemberItem>().HasNoKey().ToView(null);
         modelBuilder.Entity<SectionItem>().HasNoKey().ToView(null);

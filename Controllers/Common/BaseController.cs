@@ -62,15 +62,6 @@ public abstract class BaseController<T> : Controller where T : BaseController<T>
 
     protected IActionResult? DenyIfNotReadable(string mId) => DenyIfNotReadable(mId, out _);
 
-    /// 페이지 요청용. 통과하면 null, 아니면 404 / 403 화면으로 보낸다.
-    protected IActionResult? DenyPageIfNotReadable(string mId)
-    {
-        var access = GetManualAccess(mId);
-        if (access is null) return NotFound();
-        if (access.CAN_READ != "Y") return Redirect("/auth/error403");
-        return null;
-    }
-
     /// 쓰기 API 용. 통과하면 null. 문서 단위 검사이며 목차 단위는 프로시저가 다시 검사한다.
     protected IActionResult? DenyIfNotEditable(string mId)
     {

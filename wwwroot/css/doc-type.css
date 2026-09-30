@@ -1,6 +1,6 @@
-/* 매뉴얼 문서(미리보기 · PDF · 편집기)의 글자 크기 기준값. 크기를 바꿀 때는 이 파일만 고친다.
+/* 매뉴얼 문서(미리보기 · PDF)의 글자 크기 기준값. 크기를 바꿀 때는 이 파일만 고친다.
    본문 크기(--doc-font-size)는 문서마다 TB_S_MANUAL.BODY_FONT_SIZE 로 덮어쓴다. 제목 크기는 HeadingStyle.Defaults() 가 정한다.
-   정리 문서: docs/font-size.md */
+   정리 문서: docs/design-system/font-size.md */
 :root {
     /* 본문 */
     --doc-font-size: 12pt;

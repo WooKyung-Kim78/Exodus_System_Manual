@@ -45,6 +45,26 @@ public class DevAutoLoginConfigurationTests
         Assert.True(called);
     }
 
+    [Fact]
+    public async Task None_header_disables_auto_login_without_touching_the_session()
+    {
+        var called = false;
+        var middleware = new DevAutoLogin(
+            _ => { called = true; return Task.CompletedTask; },
+            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Dev:AutoLoginUserId"] = "dev-admin",
+            }).Build(),
+            NullLogger<DevAutoLogin>.Instance);
+        var context = new DefaultHttpContext();
+        context.Connection.RemoteIpAddress = IPAddress.Loopback;
+        context.Request.Headers["X-Dev-User"] = "none";
+
+        await middleware.InvokeAsync(context, null!);
+
+        Assert.True(called);
+    }
+
     private sealed class TestHostEnvironment : IHostEnvironment
     {
         public string EnvironmentName { get; set; } = "Development";

@@ -1,0 +1,24 @@
+using ExodusSystemManual.Common;
+
+namespace ExodusSystemManual.Tests.Common;
+
+public class MenuCatalogTests
+{
+    [Theory]
+    [InlineData(UserRoles.Admin, new[] { "dashboard", "manual", "admin.setting", "admin.code", "admin.section-template", "admin.user" })]
+    [InlineData(UserRoles.Supporter, new[] { "dashboard", "manual", "admin.setting", "admin.code" })]
+    [InlineData(UserRoles.User, new[] { "dashboard", "manual" })]
+    [InlineData(UserRoles.Reader, new[] { "dashboard", "manual" })]
+    public void GetAccessibleMenus_returns_only_role_allowed_menu(string role, string[] expectedKeys)
+    {
+        var menus = MenuCatalog.GetAccessibleMenus(role);
+
+        Assert.Equal(expectedKeys, menus.Select(item => item.KEY));
+    }
+
+    [Fact]
+    public void GetAccessibleMenus_returns_empty_for_unknown_role()
+    {
+        Assert.Empty(MenuCatalog.GetAccessibleMenus("UNKNOWN"));
+    }
+}

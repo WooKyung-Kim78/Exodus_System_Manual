@@ -159,7 +159,7 @@ public class DatasheetSpec
         return result;
     }
 
-    /// datasheet 프리뷰(Views/Workspace/Preview.cshtml)의 category 제목 · 사양표 · 꼬리말 구조를 그대로 옮긴다.
+    /// datasheet 프리뷰의 category 제목 · 사양표 · 꼬리말 구조를 그대로 옮긴다.
     /// 모양은 wwwroot/css/ds-spec.css 가 맞춘다.
     public static string BuildHtml(DatasheetSpecResult spec, bool markCategories = false)
     {

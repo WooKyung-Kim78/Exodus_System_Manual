@@ -4,11 +4,12 @@
 
 ```
 ManualController.BuildPreviewModel(mid) ─▶ PreviewViewModel  (헤더+목차+블록+스타일 병합)
-   ├─ Preview.cshtml  : 화면 미리보기 (_DocSheet.cshtml 공유)
-   └─ Pdf.cshtml      : RenderViewToStringAsync → PdfRenderer(Playwright Chromium) → 벡터 PDF
+   └─ DocumentHtmlBuilder.Build() : 완전한 문서 HTML 문자열
+       ├─ GET /api/manual/document-html : Vue 미리보기 iframe
+       └─ PdfRenderer(Playwright Chromium) : 벡터 PDF
 ```
 
-- 미리보기와 PDF 는 **`_DocSheet.cshtml` 을 공유**한다. 문서 모양을 바꾸는 작업은 이 부분 뷰와 `preview.css` 한 곳에서 한다. Preview/Pdf 각각에 조건 분기를 넣지 않는다.
+- 미리보기와 PDF 는 **`DocumentHtmlBuilder`가 만든 같은 HTML 문자열**을 사용한다. 동적 헤더·목차·본문 값은 빌더에서 HTML 인코딩하고, 본문·사양 HTML은 기존처럼 `HtmlSanitize.Clean`을 거쳐 넣는다. Preview/PDF 각각에 조건 분기를 넣지 않는다.
 - `preview.css` 의 `@page` 여백과 `ManualController.RenderPdfAsync` 의 Playwright 여백 옵션은 **같아야 한다** (코드 주석 참고). 한쪽만 바꾸면 미리보기와 PDF 의 쪽 나눔이 달라진다.
 - 페이지 크기: Letter(기본) / A4 — `TB_S_MANUAL.PAGE_SIZE`.
 
@@ -21,7 +22,7 @@ ManualController.BuildPreviewModel(mid) ─▶ PreviewViewModel  (헤더+목차+
 - 문서 HTML 과 `wwwroot` 정적 파일만 가상 origin(`http://pdf.local`)으로 제공하고 **그 외 네트워크 요청은 전부 abort**. PDF 에 외부 URL 리소스(CDN 글꼴, 외부 이미지)를 쓰면 안 나온다. 새 리소스는 `wwwroot` 에 두고 상대 경로로.
 - 이미지 등 업로드 파일도 `wwwroot/Upload/` 아래여야 렌더된다.
 - 브라우저: `PDF:BROWSER_CHANNEL`(`msedge` 기본). 비우면 Playwright 전용 Chromium (`playwright.ps1 install chromium` 필요).
-- 글꼴: **Carlito 만 웹 글꼴로 동봉** (`wwwroot/assets/fonts/carlito`). Arial·맑은 고딕 등은 PDF 를 만드는 **서버 설치 글꼴**에 의존 → 개발 PC 와 서버의 PDF 가 다를 수 있다.
+- 글꼴: Carlito와 Poppins 웹 글꼴을 `wwwroot/assets/fonts/`에 동봉한다. Arial·맑은 고딕 등은 PDF를 만드는 **서버 설치 글꼴**에 의존 → 개발 PC와 서버의 PDF가 다를 수 있다.
 - 동시 렌더 2개 제한 (`MaxParallelPages`). 한 요청이 PDF 를 2번 렌더하므로 오래 걸릴 수 있다.
 
 ## 스타일이 정해지는 순서
@@ -35,7 +36,7 @@ ManualController.BuildPreviewModel(mid) ─▶ PreviewViewModel  (헤더+목차+
 - 본문 글자 크기는 화면에서 바꿀 수 없고 **DB 로 12 고정**(`30_body_font_size_12.sql`). 사용자 기능으로 열지 않는다.
 - 제목 기본값은 **C# 이 원본**(`HeadingStyle.Defaults`), JS 는 `ClientDefaults()` 로 받는다. 새 기본값을 JS 에 복제하지 않는다.
 - 본문 글꼴 목록은 `BodyFonts` (`Models/PreviewModels.cs`) 가 원본 — 글꼴 추가 시 `BodyFonts.Stacks`, `fonts.css`, (웹 글꼴이면) 폰트 파일, 필요하면 DB 스크립트를 함께 손본다.
-- 크기 변경 상세는 [../design-system/font-size.md](../design-system/font-size.md). 단 그 문서의 표 값은 코드보다 뒤처질 수 있다 → 값은 `doc-type.css` 를 본다.
+- 크기 변경 상세와 현재 값은 [../design-system/font-size.md](../design-system/font-size.md). 코드 기준값은 `doc-type.css` 다.
 
 ## SPECIFICATIONS 사양 (datasheet 연동)
 

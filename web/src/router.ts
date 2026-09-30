@@ -12,18 +12,19 @@ import CodePage from './pages/CodePage.vue'
 import UserPage from './pages/UserPage.vue'
 import MailSettingPage from './pages/MailSettingPage.vue'
 import StyleguidePage from './pages/StyleguidePage.vue'
+import DashboardPage from './pages/DashboardPage.vue'
 
 const protectedRoutes = [
-  { path: '/', component: ManualListPage },
-  { path: '/manual', component: ManualListPage },
-  { path: '/manual/detail', component: ManualDetailPage },
-  { path: '/manual/preview', component: PreviewPage },
-  { path: '/editor', component: () => import('./pages/EditorPage.vue') },
+  { path: '/', component: DashboardPage, meta: { menuKey: 'dashboard' } },
+  { path: '/manual', component: ManualListPage, meta: { menuKey: 'manual' } },
+  { path: '/manual/detail', component: ManualDetailPage, meta: { menuKey: 'manual' } },
+  { path: '/manual/preview', component: PreviewPage, meta: { menuKey: 'manual' } },
+  { path: '/editor', component: () => import('./pages/EditorPage.vue'), meta: { menuKey: 'manual' } },
   { path: '/dev/styleguide', component: StyleguidePage, meta: { developmentOnly: true } },
-  { path: '/admin/user', component: UserPage, meta: { roles: ['ADMIN'] } },
-  { path: '/admin/code', component: CodePage, meta: { roles: ['ADMIN', 'SUPPORTER'] } },
-  { path: '/admin/setting', component: MailSettingPage, meta: { roles: ['ADMIN', 'SUPPORTER'] } },
-  { path: '/admin/section-template', component: () => import('./pages/SectionTemplatePage.vue'), meta: { roles: ['ADMIN'] } },
+  { path: '/admin/user', component: UserPage, meta: { menuKey: 'admin.user' } },
+  { path: '/admin/code', component: CodePage, meta: { menuKey: 'admin.code' } },
+  { path: '/admin/setting', component: MailSettingPage, meta: { menuKey: 'admin.setting' } },
+  { path: '/admin/section-template', component: () => import('./pages/SectionTemplatePage.vue'), meta: { menuKey: 'admin.section-template' } },
 ]
 
 export const router = createRouter({
@@ -46,7 +47,7 @@ router.beforeEach(async to => {
     session.clear()
     return { path: '/auth/sign-in', query: { returnUrl: to.fullPath } }
   }
-  const roles = to.meta.roles as string[] | undefined
   if (to.meta.developmentOnly && !session.bootstrap?.isDevelopment) return '/auth/error404'
-  return !roles || roles.includes(session.user!.ROLE) ? true : '/auth/error403'
+  const menuKey = to.meta.menuKey as string | undefined
+  return !menuKey || session.user!.MENUS.some(menu => menu.KEY === menuKey) ? true : '/auth/error403'
 })

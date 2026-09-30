@@ -51,6 +51,8 @@ public class AuthController : BaseController<AuthController>
             ROLE = CurrentRole,
             DIVISION = HttpContext.Session.GetString(SessionKeys.Division),
             TEAM = HttpContext.Session.GetString(SessionKeys.Team),
+            MENUS = MenuCatalog.GetAccessibleMenus(CurrentRole),
+            CAPABILITIES = new { CAN_CREATE_MANUAL = true },
         });
     }
 
@@ -68,7 +70,7 @@ public class AuthController : BaseController<AuthController>
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
     [Produces("application/json")]
-    public IActionResult UserLogin(UserLoginInputModel input)
+    public IActionResult UserLogin([FromBody] UserLoginInputModel input)
     {
         if (!ModelState.IsValid)
             return JsonFail(StatusCodes.Status400BadRequest, "아이디와 비밀번호를 입력하세요.");

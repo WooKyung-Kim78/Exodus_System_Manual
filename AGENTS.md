@@ -1,6 +1,6 @@
 # EXODUS System Manual — 에이전트 작업 지침
 
-.NET 8 MVC + SQL Server 저장 프로시저 + Vue 2 (전역 스크립트) 로 만든 사내 매뉴얼 작성/PDF 발행 앱.
+.NET 8 JSON API + SQL Server 저장 프로시저 + Vue 3 SPA로 만든 사내 매뉴얼 작성/PDF 발행 앱.
 이 파일은 **에이전트가 작업 전에 알아야 할 것**만 담는다. 상세는 [docs/](docs/README.md).
 
 ## 작업 전 체크 (순서대로)
@@ -35,7 +35,11 @@
 ```bash
 dotnet build                                # 컴파일 검증 (.cs 변경 시 필수)
 dotnet test tests/ExodusSystemManual.Tests  # 단위 테스트 (DB 통합 테스트는 EXODUS_TEST_DB 필요, 없으면 자동 skip)
-dotnet watch run --launch-profile https     # https://localhost:7177 (.cshtml 은 새로고침만, .cs 는 재시작)
+dotnet watch run --launch-profile https     # https://localhost:7177
+npm run dev --prefix web                    # http://localhost:5173
+npm run typecheck --prefix web
+npm run test --prefix web
+npm run e2e --prefix web                    # 서버와 Vite를 먼저 실행
 dotnet run -- seed-admin admin              # 관리자 비밀번호 (반드시 사람이 터미널에서. 에이전트는 실행 금지)
 ```
 
@@ -55,9 +59,9 @@ Models/                    엔티티 + 프로시저 결과 DTO + Input* 요청 D
 tests/ExodusSystemManual.Tests   xUnit 테스트 (메인 csproj 는 tests\** 제외)
 Utils/                     HtmlSanitize · PdfRenderer · DatasheetSpec · SendMail · ImageUpload ...
 Database/                  번호순 idempotent SQL (CREATE OR ALTER)
-Views/ + wwwroot/js/custom/<영역>/<화면>.js   화면 1개 = cshtml 1개 + JS 1개
+web/src/pages/ + web/src/features/           화면 1개 = Vue 페이지 + 기능 컴포넌트
 wwwroot/css/doc-type.css   문서 글자 크기 단일 진실 공급원
-wwwroot/assets/            Metronic 템플릿·벤더 번들 — 수정 금지
+wwwroot/assets/fonts/      문서(PDF/미리보기)용 Carlito·Poppins 글꼴
 ```
 
 ## 도메인 한 줄 요약

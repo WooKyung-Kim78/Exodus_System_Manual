@@ -2,8 +2,25 @@ import { expect, test } from '@playwright/test'
 
 test.use({ extraHTTPHeaders: { 'X-Dev-User': process.env.E2E_DEV_USER ?? 'admin' } })
 
-test('문서 목록과 미리보기 진입', async ({ page }) => {
+test('문서 목록, 상세, 편집기 진입', async ({ page }) => {
   await page.goto('/manual')
   await expect(page.getByRole('heading', { name: 'Manuals' })).toBeVisible()
   await expect(page).toHaveTitle(/EXODUS System Manual/)
+  await page.locator('tbody a').first().click()
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await page.getByRole('button', { name: '문서 스타일' }).click()
+  await expect(page.getByText('모든 제목 단계의 기본 모양과 본문 서식을 설정합니다.')).toBeVisible()
+  await page.getByRole('button', { name: '닫기' }).click()
+  await page.getByRole('link', { name: '미리보기' }).click()
+  await expect(page.getByRole('heading', { name: '미리보기' })).toBeVisible()
+  const preview = page.frameLocator('iframe[title="문서 미리보기"]')
+  await expect(preview.locator('#docSheet')).toBeVisible()
+  await expect(preview.locator('.doc-cover')).toBeVisible()
+  await page.getByRole('link', { name: '편집기' }).click()
+  await expect(page.getByRole('heading', { name: '문서 편집기' })).toBeVisible()
+  await page.getByRole('button', { name: '선택 목차 수정 이력' }).click()
+  await expect(page.getByText('최근 100건만 표시합니다.')).toBeVisible()
+  await page.getByRole('button', { name: '닫기' }).click()
+  await page.getByRole('button', { name: '선택 목차 제목 스타일' }).click()
+  await expect(page.getByText('개별 지정을 끄면 이 제목 단계의 문서 공통 스타일을 따릅니다.')).toBeVisible()
 })
