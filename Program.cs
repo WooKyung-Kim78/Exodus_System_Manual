@@ -66,8 +66,7 @@ builder.Services.Configure<FormOptions>(o =>
 
 var app = builder.Build();
 
-if (!app.Environment.IsDevelopment() && !string.IsNullOrWhiteSpace(builder.Configuration["Dev:AutoLoginUserId"]))
-    throw new InvalidOperationException("Dev:AutoLoginUserId 는 Development 환경에서만 설정할 수 있습니다.");
+DevAutoLoginConfiguration.Validate(app.Environment, builder.Configuration);
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -84,7 +83,7 @@ app.UseRouting();
 
 app.UseSession();
 
-if (app.Environment.IsDevelopment())
+if (DevAutoLoginConfiguration.ShouldRegister(app.Environment))
     app.UseMiddleware<DevAutoLogin>();
 
 app.UseAuthorization();
@@ -93,11 +92,7 @@ app.MapControllers();
 
 app.MapFallback(async context =>
 {
-    var path = context.Request.Path;
-    if (!HttpMethods.IsGet(context.Request.Method)
-        || path.StartsWithSegments("/api")
-        || path.StartsWithSegments("/Upload")
-        || Path.HasExtension(path.Value))
+    if (!SpaFallbackPolicy.ShouldServe(context.Request, app.Environment.IsDevelopment()))
     {
         context.Response.StatusCode = StatusCodes.Status404NotFound;
         return;

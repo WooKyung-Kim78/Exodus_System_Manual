@@ -23,6 +23,7 @@ public class BootstrapController : BaseController<BootstrapController>
     [Produces("application/json")]
     public IActionResult Bootstrap() => JsonOk(new
     {
+        isDevelopment = _env.IsDevelopment(),
         headingStyles = HeadingStyle.ClientDefaults(),
         bodyFonts = new[]
         {

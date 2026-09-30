@@ -6,7 +6,7 @@
 |---|---|
 | `.cs` | `dotnet build` 경고/오류 없음 + `dotnet test tests/ExodusSystemManual.Tests` 통과. 새 경고를 만들지 않는다 |
 | SQL | 문법·idempotent 여부를 읽어서 점검(에이전트는 실행 금지). C# DTO ↔ 결과 컬럼 1:1 대조 |
-| `.cshtml` / JS | 가능하면 `dotnet watch run` 후 브라우저(로그인 필요)에서 동작 확인, 콘솔 오류 없음. 불가하면 JS 문법(`node --check`) 정도만 하고 미확인 명시 |
+| `web/` | `cd web && npm run typecheck && npm run build`. 개발 서버를 띄울 수 있으면 `npm run e2e`로 화면과 콘솔 오류를 확인하고, 불가하면 미확인 사유를 명시 |
 | 문서 모양·PDF | 미리보기와 PDF 둘 다 확인 (쪽 나눔, 글꼴, 목차 쪽 번호). 사양 목차는 datasheet 연결 필요 |
 | 권한 | ADMIN / USER(담당 팀) / USER(타 팀) / READER 별 읽기·쓰기 결과 |
 
