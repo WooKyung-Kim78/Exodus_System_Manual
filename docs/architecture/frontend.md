@@ -12,7 +12,7 @@ npm run typecheck
 npm run build
 ```
 
-Node 24를 사용한다(`web/.nvmrc`). Vite는 `:5173`에서 `/api`, `/Upload`를 `https://localhost:7177`로 프록시한다. `dotnet publish`는 기본적으로 프런트 빌드도 실행하며 `-p:SkipWebBuild=true`로 생략할 수 있다.
+Node 24를 사용한다(`web/.nvmrc`). Vite는 `:5173`에서 `/api`, `/Upload`를 `http://localhost:7176`으로 프록시한다. `dotnet publish`는 기본적으로 프런트 빌드도 실행하며 `-p:SkipWebBuild=true`로 생략할 수 있다.
 
 ## 구조와 API
 
@@ -30,4 +30,4 @@ Node 24를 사용한다(`web/.nvmrc`). Vite는 `:5173`에서 `/api`, `/Upload`�
 
 `/dev/styleguide`는 서버 환경이 Development일 때만 연다. SPA 라우터는 `/api/bootstrap`의 `isDevelopment` 값으로 화면 전환을 막고, 서버 SPA fallback도 Production에서 해당 직접 요청을 404로 처리한다.
 
-`npm run e2e`는 서버를 띄우지 않는다. 먼저 `dotnet watch run --launch-profile https`와 `npm run dev`를 실행한다. `e2e/global-setup.ts`가 `/api/health`를 검사해 서버가 없으면 즉시 실행 방법을 알린다. 기본 URL은 `http://localhost:5173`이고 `E2E_BASE_URL`로 바꿀 수 있다.
+`npm run e2e`는 서버를 띄우지 않는다. 먼저 `dotnet watch run`과 `npm run dev`를 실행한다. `e2e/global-setup.ts`가 `/api/health`를 검사해 서버가 없으면 즉시 실행 방법을 알린다. 기본 URL은 `http://localhost:5173`이고 `E2E_BASE_URL`로 바꿀 수 있다.

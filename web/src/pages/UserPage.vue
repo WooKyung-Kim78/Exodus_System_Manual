@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api, query } from '../api/client'
+import AppBadge from '../design-system/AppBadge.vue'
+import AppDialog from '../design-system/AppDialog.vue'
+import AppTable from '../design-system/AppTable.vue'
 import ConfirmDialog from '../design-system/ConfirmDialog.vue'
 import { useConfirmDialog } from '../design-system/useConfirmDialog'
 
@@ -9,6 +12,7 @@ type UserInput = Pick<User, 'USER_ID' | 'FULL_NAME' | 'EMAIL' | 'DIVISION' | 'TE
 const users = ref<User[]>([]); const keyword = ref(''); const view = ref('USE'); const form = ref<UserInput | null>(null); const password = ref(''); const error = ref(''); const saving = ref(false)
 const confirmation = useConfirmDialog()
 const isNew = computed(() => form.value !== null && !users.value.some(user => user.USER_ID === form.value!.USER_ID))
+function accountStatus(user: User) { if (user.IS_DELETED === 'Y') return { label: '삭제됨', tone: 'danger' as const }; return user.AUTHORIZED === 'Y' ? { label: '승인', tone: 'success' as const } : { label: '미승인', tone: 'warning' as const } }
 async function load() { try { users.value = (await api<{ list: User[] }>(query('/api/admin/user/list', { keyword: keyword.value, view: view.value }))).list } catch (e) { error.value = e instanceof Error ? e.message : '사용자 목록을 불러오지 못했습니다.' } }
 function open(user?: User) { error.value = ''; password.value = ''; form.value = user ? { ...user, AUTHORIZED: user.AUTHORIZED === 'Y' ? 'Y' : 'S' } : { USER_ID: '', FULL_NAME: '', EMAIL: '', DIVISION: '', TEAM: '', SUPERVISOR_USER_ID: '', ROLE_NAME: 'USER', AUTHORIZED: 'Y', N_PASSWORD: '' } }
 async function save() { if (!form.value) return; if (isNew.value && !form.value.N_PASSWORD) { error.value = '신규 사용자의 초기 비밀번호를 입력하세요.'; return }; saving.value = true; try { await api('/api/admin/user', { method: 'POST', body: JSON.stringify(form.value) }); form.value = null; await load() } catch (e) { error.value = e instanceof Error ? e.message : '사용자를 저장하지 못했습니다.' } finally { saving.value = false } }
@@ -18,4 +22,26 @@ function restore(user: User) { confirmation.request({ title: '계정 복구', me
 async function resetPassword(user: User) { const next = prompt(`${user.FULL_NAME}의 새 비밀번호를 입력하세요.`); if (!next) return; try { await api('/api/admin/user/password', { method: 'POST', body: JSON.stringify({ USER_ID: user.USER_ID, N_PASSWORD: next }) }) } catch (e) { error.value = e instanceof Error ? e.message : '비밀번호를 변경하지 못했습니다.' } }
 onMounted(load)
 </script>
-<template><section><div class="page-title"><div><h1>사용자 관리</h1><p>계정, 역할, 승인 상태를 관리합니다.</p></div><button @click="open()">사용자 추가</button></div><p v-if="error" class="error">{{ error }}</p><div class="toolbar"><input v-model="keyword" placeholder="이름 또는 아이디 검색" @keyup.enter="load" /><select v-model="view" @change="load"><option value="USE">사용 중</option><option value="DEL">삭제됨</option></select><button class="secondary" @click="load">검색</button></div><div class="admin-grid"><table><thead><tr><th>아이디</th><th>이름</th><th>소속</th><th>역할</th><th>상태</th><th></th></tr></thead><tbody><tr v-for="user in users" :key="user.USER_ID"><td>{{ user.USER_ID }}</td><td>{{ user.FULL_NAME }}<small>{{ user.EMAIL }}</small></td><td>{{ user.DIVISION }} {{ user.TEAM }}</td><td>{{ user.ROLE_NAME }}</td><td>{{ user.IS_DELETED === 'Y' ? '삭제됨' : user.AUTHORIZED === 'Y' ? '승인' : '미승인' }}</td><td><template v-if="user.IS_DELETED === 'Y'"><button class="inline" @click="restore(user)">복구</button></template><template v-else><button class="inline" @click="open(user)">수정</button><button class="inline" @click="resetPassword(user)">비밀번호</button><button class="inline" @click="setStatus(user, user.AUTHORIZED === 'Y' ? 'S' : 'Y')">{{ user.AUTHORIZED === 'Y' ? '미승인' : '승인' }}</button><button class="inline danger" @click="remove(user)">삭제</button></template></td></tr></tbody></table><form v-if="form" class="panel" @submit.prevent="save"><h2>{{ isNew ? '사용자 추가' : '사용자 수정' }}</h2><label>아이디<input v-model="form.USER_ID" :readonly="!isNew" required /></label><label>이름<input v-model="form.FULL_NAME" required /></label><label>이메일<input v-model="form.EMAIL" type="email" /></label><label>본부<input v-model="form.DIVISION" /></label><label>팀<input v-model="form.TEAM" /></label><label>역할<select v-model="form.ROLE_NAME"><option>ADMIN</option><option>USER</option><option>READER</option></select></label><label>상태<select v-model="form.AUTHORIZED"><option value="Y">승인</option><option value="S">미승인</option></select></label><label v-if="isNew">초기 비밀번호<input v-model="form.N_PASSWORD" type="password" /></label><div><button :disabled="saving">{{ saving ? '저장 중…' : '저장' }}</button><button class="secondary" type="button" @click="form = null">취소</button></div></form></div><ConfirmDialog v-model:open="confirmation.open" :title="confirmation.title" :message="confirmation.message" :confirm-label="confirmation.confirmLabel" :danger="confirmation.danger" @confirm="confirmation.confirm" @cancel="confirmation.cancel" /></section></template>
+<template>
+  <section>
+    <div class="page-title"><div><h1>사용자 관리</h1><p>계정, 역할, 승인 상태를 관리합니다.</p></div><button @click="open()">사용자 추가</button></div>
+    <p v-if="error" class="error">{{ error }}</p>
+    <div class="toolbar"><input v-model="keyword" placeholder="이름 또는 아이디 검색" @keyup.enter="load" /><select v-model="view" @change="load"><option value="USE">사용 중</option><option value="DEL">삭제됨</option></select><button class="secondary" @click="load">검색</button></div>
+    <div class="admin-grid">
+      <AppTable>
+        <thead><tr><th>아이디</th><th>이름</th><th>소속</th><th>역할</th><th>상태</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="user in users" :key="user.USER_ID">
+            <td>{{ user.USER_ID }}</td><td>{{ user.FULL_NAME }}<small>{{ user.EMAIL }}</small></td><td>{{ user.DIVISION }} {{ user.TEAM }}</td><td>{{ user.ROLE_NAME }}</td><td><AppBadge v-bind="accountStatus(user)" /></td>
+            <td class="row-actions"><template v-if="user.IS_DELETED === 'Y'"><button class="inline" @click="restore(user)">복구</button></template><template v-else><button class="inline" @click="open(user)">수정</button><button class="inline action-info" @click="resetPassword(user)">비밀번호</button><button class="inline action-warning" @click="setStatus(user, user.AUTHORIZED === 'Y' ? 'S' : 'Y')">{{ user.AUTHORIZED === 'Y' ? '미승인' : '승인' }}</button><button class="inline danger" @click="remove(user)">삭제</button></template></td>
+          </tr>
+        </tbody>
+      </AppTable>
+    </div>
+    <AppDialog :open="form !== null" :title="isNew ? '사용자 추가' : '사용자 수정'" @update:open="open => { if (!open) form = null }">
+      <form v-if="form" id="user-form" @submit.prevent="save"><label>아이디<input v-model="form.USER_ID" :readonly="!isNew" required /></label><label>이름<input v-model="form.FULL_NAME" required /></label><label>이메일<input v-model="form.EMAIL" type="email" /></label><label>본부<input v-model="form.DIVISION" /></label><label>팀<input v-model="form.TEAM" /></label><label>역할<select v-model="form.ROLE_NAME"><option>ADMIN</option><option>USER</option><option>READER</option></select></label><label>상태<select v-model="form.AUTHORIZED"><option value="Y">승인</option><option value="S">미승인</option></select></label><label v-if="isNew">초기 비밀번호<input v-model="form.N_PASSWORD" type="password" /></label></form>
+      <template #footer><button class="secondary" type="button" @click="form = null">취소</button><button form="user-form" type="submit" :disabled="saving">{{ saving ? '저장 중…' : '저장' }}</button></template>
+    </AppDialog>
+    <ConfirmDialog v-model:open="confirmation.open" :title="confirmation.title" :message="confirmation.message" :confirm-label="confirmation.confirmLabel" :danger="confirmation.danger" @confirm="confirmation.confirm" @cancel="confirmation.cancel" />
+  </section>
+</template>

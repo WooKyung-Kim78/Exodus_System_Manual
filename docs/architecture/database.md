@@ -45,4 +45,4 @@ SQL Server. 앱은 **저장 프로시저로만** 읽고 쓴다. 스키마 원본
 
 ## 레거시 잔재
 
-`TB_S_MANUAL_MEMBER`(참여자), `TB_S_COMMENT`, `TB_S_PRESENCE`, `TB_S_ELEMENT_TABLE_ROW`, `USP_S_*CANVAS*` 는 이전 캔버스/참여자 모델의 흔적이다 (`TB_S_ELEMENT`·`TB_S_SECTION` 은 현역). 참여 범위는 이제 **목차의 담당 팀**이 정한다. 이쪽에 의존하는 신규 코드를 만들지 않는다.
+`TB_S_MANUAL_MEMBER`(참여자), `TB_S_COMMENT`, `TB_S_PRESENCE`, `TB_S_ELEMENT_TABLE_ROW`, `USP_S_*CANVAS*` 는 이전 캔버스/참여자 모델의 흔적이다 (`TB_S_ELEMENT`·`TB_S_SECTION` 은 현역). 참여 범위는 이제 **목차의 담당 팀**이 정한다. C# 엔티티/DbSet 은 제거했고 DB 테이블·프로시저만 남아 있다(최신 프로시저가 `TB_S_COMMENT` 를 참조하므로 삭제는 별도 DB 스크립트로). 이쪽에 의존하는 신규 코드를 만들지 않는다.

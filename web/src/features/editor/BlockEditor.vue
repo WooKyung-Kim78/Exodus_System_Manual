@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { Ckeditor } from '@ckeditor/ckeditor5-vue'
+import 'ckeditor5/ckeditor5.css'
 import { csrfHeader } from '../../api/client'
 import {
   Alignment, Autoformat, BlockQuote, Bold, ClassicEditor, Essentials, FontBackgroundColor, FontColor, Heading,

@@ -433,6 +433,25 @@ public class AdminController : BaseController<AdminController>
         return JsonOk();
     }
 
+    [AjaxAuth("ADMIN, SUPPORTER")]
+    [HttpPost("code/order")]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
+    public IActionResult UpdateCodeOrder(string orders)
+    {
+        if (string.IsNullOrWhiteSpace(orders))
+            return JsonFail(StatusCodes.Status400BadRequest, "순서 정보가 없습니다.");
+
+        var result = _db.ResultModel
+            .FromSqlRaw("EXECUTE dbo.USP_S_UPDATE_COMMON_CODE_ORDER {0}, {1}", orders, CurrentUserId!)
+            .AsEnumerable().FirstOrDefault();
+
+        if (result is null || result.Success == 0)
+            return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "순서를 저장하지 못했습니다.");
+
+        return JsonOk();
+    }
+
     /// 표지 로고. 경로를 COVER/LOGO_PATH 코드에 저장한다.
     [AjaxAuth("ADMIN, SUPPORTER")]
     [HttpPost("code/logo")]

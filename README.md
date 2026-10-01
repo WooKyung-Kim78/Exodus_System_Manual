@@ -66,10 +66,10 @@ dotnet run -- seed-admin admin
 ### 4. 실행
 
 ```powershell
-dotnet watch run --launch-profile https
+dotnet watch run
 ```
 
-`https://localhost:7177` 로 접속합니다.
+`http://localhost:7176` 로 접속합니다.
 
 ---
 

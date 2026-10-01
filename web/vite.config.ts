@@ -11,8 +11,8 @@ export default defineConfig(({ command }) => ({
   server: {
     port: 5173,
     proxy: {
-      '/api': { target: 'https://localhost:7177', changeOrigin: true, secure: false },
-      '/Upload': { target: 'https://localhost:7177', changeOrigin: true, secure: false },
+      '/api': { target: 'http://localhost:7176', changeOrigin: true },
+      '/Upload': { target: 'http://localhost:7176', changeOrigin: true },
     },
   },
 }))

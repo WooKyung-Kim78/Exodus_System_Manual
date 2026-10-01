@@ -63,18 +63,6 @@ public class ManualHeader
     public DateTime? UPT_DT { get; set; }
 }
 
-public class ManualMemberItem
-{
-    public long IDX { get; set; }
-    public string M_ID { get; set; } = null!;
-    public string USER_ID { get; set; } = null!;
-    public string MEMBER_ROLE { get; set; } = null!;
-    public string FULL_NAME { get; set; } = null!;
-    public string? EMAIL { get; set; }
-    public string? DIVISION { get; set; }
-    public string? TEAM { get; set; }
-}
-
 /* ---------- 입력 모델 ---------- */
 
 public class InputNewManual

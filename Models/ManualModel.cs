@@ -36,20 +36,6 @@ public class Manual
     public DateTime? UPT_DT { get; set; }
 }
 
-[Table("TB_S_MANUAL_MEMBER")]
-public class ManualMember
-{
-    [Key]
-    public long IDX { get; set; }
-    public string M_ID { get; set; } = null!;
-    public string USER_ID { get; set; } = null!;
-    public string? TEAM { get; set; }
-    public string MEMBER_ROLE { get; set; } = "EDITOR";
-    public string IS_DELETED { get; set; } = "N";
-    public string REG_ID { get; set; } = null!;
-    public DateTime REG_DT { get; set; }
-}
-
 /// USP_S_SELECT_MANUAL_ACCESS 결과. 모든 쓰기 API 의 사전 권한 확인에 사용한다.
 public class ManualAccess
 {

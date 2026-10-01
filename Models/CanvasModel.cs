@@ -61,23 +61,6 @@ public class CanvasElement
     public DateTime UPT_DT { get; set; }
 }
 
-[Table("TB_S_ELEMENT_TABLE_ROW")]
-public class ElementTableRow
-{
-    [Key]
-    public long ROW_ID { get; set; }
-    public long ELE_ID { get; set; }
-    public int ORDER_NUM { get; set; }
-    public string? ITEM { get; set; }
-    public string? SPEC { get; set; }
-    public string? UNIT { get; set; }
-    public string? MIN_VAL { get; set; }
-    public string? TYP_VAL { get; set; }
-    public string? MAX_VAL { get; set; }
-    public string? REMARK { get; set; }
-    public string IS_DELETED { get; set; } = "N";
-}
-
 [Table("TB_S_ELEMENT_HISTORY")]
 public class ElementHistory
 {
@@ -94,31 +77,3 @@ public class ElementHistory
     public DateTime REG_DT { get; set; }
 }
 
-[Table("TB_S_COMMENT")]
-public class Comment
-{
-    [Key]
-    public long CMT_ID { get; set; }
-    public string M_ID { get; set; } = null!;
-    public long? SEC_ID { get; set; }
-    public long? ELE_ID { get; set; }
-    public double? PIN_X { get; set; }
-    public double? PIN_Y { get; set; }
-    public long? PARENT_CMT_ID { get; set; }
-    public string BODY { get; set; } = null!;
-    public string IS_RESOLVED { get; set; } = "N";
-    public string IS_DELETED { get; set; } = "N";
-    public string REG_ID { get; set; } = null!;
-    public DateTime REG_DT { get; set; }
-}
-
-[Table("TB_S_PRESENCE")]
-public class Presence
-{
-    public string M_ID { get; set; } = null!;
-    public string CLIENT_ID { get; set; } = null!;
-    public string USER_ID { get; set; } = null!;
-    public long? SEC_ID { get; set; }
-    public long? EDITING_ELE_ID { get; set; }
-    public DateTime LAST_PING_DT { get; set; }
-}

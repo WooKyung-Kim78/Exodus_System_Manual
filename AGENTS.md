@@ -35,7 +35,7 @@
 ```bash
 dotnet build                                # 컴파일 검증 (.cs 변경 시 필수)
 dotnet test tests/ExodusSystemManual.Tests  # 단위 테스트 (DB 통합 테스트는 EXODUS_TEST_DB 필요, 없으면 자동 skip)
-dotnet watch run --launch-profile https     # https://localhost:7177
+dotnet watch run                            # http://localhost:7176
 npm run dev --prefix web                    # http://localhost:5173
 npm run typecheck --prefix web
 npm run test --prefix web

@@ -19,7 +19,7 @@ SPA 화면 경로와 JSON API 경로를 분리한다. 화면의 직접 GET은 ww
 | 편집기 | /api/editor/section, /api/editor/block | DELETE | 목차·블록 삭제 |
 | 관리 | /api/admin/setting/mail, /api/admin/setting/mail/log | GET | 메일 설정·발송 이력 |
 | 관리 | /api/admin/section-template/list, /api/admin/user/list, /api/admin/code/list | GET | 관리 목록 |
-| 관리 | /api/admin/setting/mail, /api/admin/setting/mail/test, /api/admin/section-template, /api/admin/section-template/order, /api/admin/section-template/image, /api/admin/user, /api/admin/user/password, /api/admin/user/authorized, /api/admin/user/restore, /api/admin/code, /api/admin/code/logo | POST | 관리 저장·업로드 |
+| 관리 | /api/admin/setting/mail, /api/admin/setting/mail/test, /api/admin/section-template, /api/admin/section-template/order, /api/admin/section-template/image, /api/admin/user, /api/admin/user/password, /api/admin/user/authorized, /api/admin/user/restore, /api/admin/code, /api/admin/code/order, /api/admin/code/logo | POST | 관리 저장·업로드 |
 | 관리 | /api/admin/section-template, /api/admin/user, /api/admin/code | DELETE | 관리 삭제 |
 
 모든 쓰기 요청은 RequestVerificationToken 헤더를 포함한다. 문서 관련 쓰기 API는 서버에서 DenyIfNotEditable과 프로시저 권한 검사를 모두 거친다.

@@ -446,7 +446,7 @@ public class ManualController : BaseController<ManualController>
 
     /* ================= 공통 ================= */
 
-    private string AppDomainUrl => _config["APP:DOMAIN"] ?? "https://localhost:7177";
+    private string AppDomainUrl => _config["APP:DOMAIN"] ?? "http://localhost:7176";
 
     private ManualHeader? LoadHeader(string mId)
         => _db.USP_S_SELECT_MANUAL
