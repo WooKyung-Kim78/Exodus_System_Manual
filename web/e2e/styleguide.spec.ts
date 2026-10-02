@@ -4,7 +4,7 @@ test.use({ extraHTTPHeaders: { 'X-Dev-User': process.env.E2E_DEV_USER ?? 'admin'
 
 test('스타일가이드 공통 컴포넌트를 표시하고 상호작용한다', async ({ page }) => {
   await page.goto('/dev/styleguide')
-  await expect(page.getByRole('heading', { name: 'Styleguide' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '색상' })).toBeVisible()
   await expect(page.getByRole('tab', { name: '개요' })).toHaveAttribute('aria-selected', 'true')
   await page.getByRole('tab', { name: '이력' }).click()
   await expect(page.getByRole('tab', { name: '이력' })).toHaveAttribute('aria-selected', 'true')

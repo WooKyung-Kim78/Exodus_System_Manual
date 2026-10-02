@@ -21,4 +21,15 @@ public class MenuCatalogTests
     {
         Assert.Empty(MenuCatalog.GetAccessibleMenus("UNKNOWN"));
     }
+
+    [Fact]
+    public void GetAccessibleMenus_returns_navigation_metadata()
+    {
+        var manual = MenuCatalog.GetAccessibleMenus(UserRoles.User).Single(item => item.KEY == "manual");
+
+        Assert.Equal("Manuals", manual.LABEL);
+        Assert.Equal("Workspace", manual.GROUP);
+        Assert.Equal("file-document-outline", manual.ICON);
+        Assert.False(string.IsNullOrWhiteSpace(manual.DESCRIPTION));
+    }
 }

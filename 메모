@@ -95,7 +95,7 @@ wwwroot/css, assets/fonts  # 문서(미리보기/PDF)용 CSS·Carlito 폰트만 
 
 ### 2-3. 서버 값 주입 (`window.XXX = @Json.Serialize(...)` 대체)
 
-- **`GET /api/bootstrap`** 신설: `HeadingStyle.ClientDefaults()`, `BodyFonts` 목록, 핀 배치 카테고리 등 **C# 이 원본인 값**을 내려준다. 프런트에 기본값을 복제하지 않는다는 규칙은 유지 (앱 시작 시 1회 로드 후 store 에 보관).
+- **`GET /api/auth/me`의 `BOOTSTRAP`**: `HeadingStyle.ClientDefaults()`, `BodyFonts` 목록 등 **C# 이 원본인 값**을 현재 세션 사용자·메뉴와 함께 내려준다. 프런트에 기본값을 복제하지 않는다는 규칙은 유지 (앱 시작 시 1회 로드 후 store 에 보관).
 - 응답 DTO 는 지금처럼 UPPER_SNAKE 유지 (`PropertyNamingPolicy = null`). TS 타입은 `web/src/api/types.ts` 한 곳에서 정의 (필요하면 후속 과제로 OpenAPI 타입 생성 검토).
 
 ## 3. 문서 렌더링 (미리보기·PDF) — 가장 큰 결정
@@ -193,7 +193,7 @@ wwwroot/css, assets/fonts  # 문서(미리보기/PDF)용 CSS·Carlito 폰트만 
 | 단계                 | 내용                                                                                                                                                                                                    | 완료 기준                                                                |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ---- | ----- | ----------------- | ------------------------------------------ |
 | **P0 기준선**        | 현 PDF 골든 생성(3장), 현 화면 스크린샷 기록, 관리자·문서 API 의 `[AjaxAuth]` 누락 점검                                                                                                                 | 골든 저장, 점검 결과를 known-issues 또는 PR 설명에 기록                  |
-| **P1 기반**          | `web/` 생성(Vite·TS·Tailwind·Vitest·Playwright), 프록시, `/api/health`, `/api/auth/csrf`, `/api/auth/me`, `/api/bootstrap`, SPA 폴백, DevAutoLogin + 테스트, 스모크 E2E                                 | `npm run dev` + 서버 기동 후 자동 로그인으로 빈 앱 셸이 뜨고 스모크 통과 |
+| **P1 기반**          | `web/` 생성(Vite·TS·Tailwind·Vitest·Playwright), 프록시, `/api/health`, `/api/auth/csrf`, `/api/auth/me`, SPA 폴백, DevAutoLogin + 테스트, 스모크 E2E                                                   | `npm run dev` + 서버 기동 후 자동 로그인으로 빈 앱 셸이 뜨고 스모크 통과 |
 | **P2 디자인 시스템** | 토큰·기본 컴포넌트·styleguide·시각 회귀                                                                                                                                                                 | 스타일가이드 E2E 통과                                                    |
 | **P3 API 재편**      | JSON 액션을 `/api/...` 로 이동(신규 경로 추가, 이 기간에만 구 경로 병행), 경로표 문서화, AjaxAuth 전수 테스트                                                                                           | 기존 화면·신규 SPA 모두 동작                                             |
 | **P4 소형 화면**     | sign-in, 403/404, admin 4종, 문서 목록                                                                                                                                                                  | 화면별 E2E 통과 후 해당 구 화면 삭제                                     |

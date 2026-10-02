@@ -1,6 +1,7 @@
 import type { ApiResponse } from './types'
 
 let csrfToken = ''
+let csrfLoading: Promise<void> | null = null
 
 export function csrfHeader(): Record<string, string> {
   return csrfToken ? { RequestVerificationToken: csrfToken } : {}
@@ -10,15 +11,20 @@ export class ApiError extends Error {
   constructor(public readonly status: number, message: string) { super(message) }
 }
 
-export async function initializeCsrf(): Promise<void> {
-  const response = await fetch('/api/auth/csrf', { credentials: 'same-origin' })
-  const body = await response.json() as ApiResponse<{ token: string }>
-  if (!response.ok || !body.success) throw new ApiError(response.status, body.message ?? 'CSRF 토큰을 받지 못했습니다.')
-  csrfToken = body.data.token
+export function initializeCsrf(): Promise<void> {
+  if (csrfToken) return Promise.resolve()
+  csrfLoading ??= (async () => {
+    const response = await fetch('/api/auth/csrf', { credentials: 'same-origin' })
+    const body = await response.json() as ApiResponse<{ token: string }>
+    if (!response.ok || !body.success) throw new ApiError(response.status, body.message ?? 'CSRF 토큰을 받지 못했습니다.')
+    csrfToken = body.data.token
+  })().finally(() => { csrfLoading = null })
+  return csrfLoading
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const method = (init.method ?? 'GET').toUpperCase()
+  if (method !== 'GET' && !csrfToken) await initializeCsrf()
   const headers = new Headers(init.headers)
   if (method !== 'GET' && csrfToken) headers.set('RequestVerificationToken', csrfToken)
   if (init.body && !(init.body instanceof FormData) && !(init.body instanceof URLSearchParams)) headers.set('Content-Type', 'application/json')

@@ -5,9 +5,8 @@ SPA 화면 경로와 JSON API 경로를 분리한다. 화면의 직접 GET은 ww
 | 영역 | 경로 | 메서드 | 용도 |
 |---|---|---|---|
 | 공통 | /api/health | GET | 상태 확인 |
-| 공통 | /api/bootstrap | GET | 제목 기본값·본문 글꼴 등 서버 원본 값 |
 | 인증 | /api/auth/csrf | GET | Antiforgery 토큰 발급 |
-| 인증 | /api/auth/me | GET | 현재 세션 사용자 |
+| 인증 | /api/auth/me | GET | 현재 세션 사용자·메뉴·클라이언트 공통 설정 |
 | 인증 | /api/auth/login, /api/auth/logout | POST | 로그인·로그아웃 |
 | 문서 | /api/manual/list, /api/manual/find, /api/manual/datasheets, /api/manual/spec | GET | 목록·상세·datasheet |
 | 문서 | /api/manual/create, /api/manual/header, /api/manual/notify, /api/manual/cover | POST | 생성·헤더·작성 요청·표지 |

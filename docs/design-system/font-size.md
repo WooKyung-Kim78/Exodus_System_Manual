@@ -83,7 +83,7 @@ TB_S_MANUAL.BODY_FONT_SIZE
 
 - 적용 순서: `Defaults()` ← `HEADING_STYLE_JSON` ← `STYLE_JSON` (뒤가 앞을 덮어씀)
 - 목차 설정의 "밑줄" 스위치(`TITLE_UNDERLINE`)는 크기와 별개로 밑줄만 켭니다.
-- 화면은 기본값을 따로 갖지 않고, 앱 시작 시 /api/bootstrap에서 받은 HeadingStyle.ClientDefaults()를 씁니다.
+- 화면은 기본값을 따로 갖지 않고, 앱 시작 시 /api/auth/me의 `BOOTSTRAP.headingStyles`로 받은 HeadingStyle.ClientDefaults()를 씁니다.
 
 ### 2-4. PDF 꼬리말
 

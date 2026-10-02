@@ -111,7 +111,7 @@ public class PreviewViewModel
     /// 인쇄 영역 폭(mm). Letter 216 / A4 210 에서 좌우 여백을 뺀 값.
     public int ContentWidthMm => Header.PAGE_SIZE == "A4" ? 170 : 176;
     public string BodyFontStack => BodyFonts.StackOf(Header.BODY_FONT);
-    /// 본문 글자 크기(pt). DB 는 10 으로 고정해 저장한다. (USP_S_UPDATE_DOC_STYLE)
+    /// 본문 글자 크기(pt). DB 는 12 로 고정해 저장한다. (USP_S_UPDATE_DOC_STYLE)
     public int BodyFontSize => Header.BODY_FONT_SIZE is > 0 ? Header.BODY_FONT_SIZE.Value : 12;
     public decimal BodyLineHeight => Header.BODY_LINE_HEIGHT ?? 1.2m;
     public decimal BodyLetterSpacing => Header.BODY_LETTER_SPACING ?? 0m;

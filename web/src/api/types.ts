@@ -1,12 +1,12 @@
 export interface ApiResponse<T> { success: boolean; data: T; message?: string }
-export interface MenuLink { KEY: string; PATH: string }
-export interface CurrentUser { USER_ID: string; FULL_NAME: string; EMAIL: string; ROLE: string; DIVISION: string; TEAM: string; MENUS: MenuLink[]; CAPABILITIES: { CAN_CREATE_MANUAL: boolean } }
+export interface MenuLink { KEY: string; PATH: string; LABEL: string; GROUP?: string; ICON: string; DESCRIPTION?: string }
+export interface CurrentUser { USER_ID: string; FULL_NAME: string; EMAIL: string; ROLE: string; DIVISION: string; TEAM: string; MENUS: MenuLink[]; CAPABILITIES: { CAN_CREATE_MANUAL: boolean }; BOOTSTRAP: BootstrapData }
 export interface HeadingStyle { size: number; color: string; bold: boolean; underline: boolean }
 export interface BodyFont { code: string; name: string }
 export interface BootstrapData { isDevelopment: boolean; headingStyles: Record<string, HeadingStyle>; bodyFonts: BodyFont[] }
 export interface ManualListItem { M_ID: string; MODEL_NAME: string; JOB_NUMBER?: string; DOC_NUM?: string; OPTION_TEXT?: string; REVISION: string; STATUS: string; REQUESTER_NAME?: string; MY_ROLE?: string; REG_DT: string }
 export interface ManualHeader extends ManualListItem { PAGE_SIZE: 'A4' | 'LETTER'; LABEL?: string; COOLING?: string; OPTION_TEXT?: string; DOC_VERSION?: string; PROCESS_ID?: string; COVER_IMAGE_PATH?: string; HEADING_STYLE_JSON?: string; BODY_FONT?: string; BODY_LINE_HEIGHT?: number; BODY_LETTER_SPACING?: number }
-export interface ManualSection { SEC_ID: number; SEC_NO?: string; TITLE: string; SEC_LEVEL: number; SEC_TYPE?: 'NORMAL' | 'PAGEBREAK'; CAN_EDIT_SEC?: string; ASSIGNED_TEAM?: string; TITLE_ALIGN?: 'LEFT' | 'CENTER' | 'RIGHT'; SHOW_IN_TOC?: 'Y' | 'N'; TITLE_UNDERLINE?: 'Y' | 'N'; STYLE_JSON?: string; BLOCK_CNT?: number }
+export interface ManualSection { SEC_ID: number; ORDER_NUM?: number; SEC_NO?: string; TITLE: string; SEC_LEVEL: number; SEC_TYPE?: 'NORMAL' | 'PAGEBREAK'; CAN_EDIT_SEC?: string; ASSIGNED_TEAM?: string; EDITOR_NAME?: string; UPT_DT?: string; SEC_STATUS?: string; TITLE_ALIGN?: 'LEFT' | 'CENTER' | 'RIGHT'; SHOW_IN_TOC?: 'Y' | 'N'; TITLE_UNDERLINE?: 'Y' | 'N'; STYLE_JSON?: string; BLOCK_CNT?: number }
 export interface DatasheetOption { D_ID: string; NAME: string; TITLE?: string; DS_VERSION?: string }
 export interface NotifyRecipient { USER_ID: string; FULL_NAME: string; MEMBER_ROLE: string; EMAIL_ADDRESS?: string; SECTION_CNT: number; ASSIGNED_SECTIONS?: string }
 export interface TeamOption { DIVISION: string; TEAM: string }

@@ -13,6 +13,8 @@ export default defineConfig(({ command }) => ({
     proxy: {
       '/api': { target: 'http://localhost:7176', changeOrigin: true },
       '/Upload': { target: 'http://localhost:7176', changeOrigin: true },
+      // 문서/PDF와 같은 CSS를 srcdoc 미리보기에서도 사용한다.
+      '/css': { target: 'http://localhost:7176', changeOrigin: true },
     },
   },
 }))

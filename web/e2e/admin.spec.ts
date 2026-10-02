@@ -3,10 +3,10 @@ import { expect, test } from '@playwright/test'
 test.use({ extraHTTPHeaders: { 'X-Dev-User': process.env.E2E_ADMIN_USER ?? 'admin' } })
 
 const pages = [
-  { path: '/admin/user', heading: '사용자 관리' },
-  { path: '/admin/code', heading: '공통 코드 관리' },
-  { path: '/admin/setting', heading: '메일 설정' },
-  { path: '/admin/section-template', heading: '목차 템플릿' },
+  { path: '/admin/user', heading: 'Users' },
+  { path: '/admin/code', heading: 'Common Codes' },
+  { path: '/admin/setting', heading: 'Settings' },
+  { path: '/admin/section-template', heading: 'Section Templates' },
 ]
 
 for (const item of pages) {

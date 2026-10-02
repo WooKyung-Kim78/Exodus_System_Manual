@@ -53,6 +53,20 @@ public class AuthController : BaseController<AuthController>
             TEAM = HttpContext.Session.GetString(SessionKeys.Team),
             MENUS = MenuCatalog.GetAccessibleMenus(CurrentRole),
             CAPABILITIES = new { CAN_CREATE_MANUAL = true },
+            BOOTSTRAP = new
+            {
+                isDevelopment = _env.IsDevelopment(),
+                headingStyles = HeadingStyle.ClientDefaults(),
+                bodyFonts = new[]
+                {
+                    new { code = "ARIAL", name = "Arial" },
+                    new { code = "CARLITO", name = "Carlito" },
+                    new { code = "VERDANA", name = "Verdana" },
+                    new { code = "TAHOMA", name = "Tahoma" },
+                    new { code = "GEORGIA", name = "Georgia" },
+                    new { code = "TIMES", name = "Times New Roman" },
+                },
+            },
         });
     }
 

@@ -18,7 +18,7 @@
 |---|---|
 | 컨트롤러 간 공통 (권한 거부 응답, 결과→JSON 변환, 접근 조회) | `BaseController<T>` |
 | 컨트롤러 밖에서도 쓰는 도메인 로직 (HTML 정제, 사양 생성, 업로드) | `Utils/` 클래스 + DI 등록 |
-| 서버·클라이언트가 같이 쓰는 기본값/상수 | 서버(C#)를 원본으로 두고 `/api/bootstrap`으로 내려준다 (`HeadingStyle.ClientDefaults`) |
+| 서버·클라이언트가 같이 쓰는 기본값/상수 | 서버(C#)를 원본으로 두고 `/api/auth/me`의 `BOOTSTRAP`으로 내려준다 (`HeadingStyle.ClientDefaults`) |
 | 화면 간 공통 TS (라벨 맵, 포맷 함수, 모달 헬퍼) | `web/src/features/` 또는 `web/src/design-system/` |
 | 문서 모양 (미리보기/PDF/편집기) | `DocumentHtmlBuilder` + CSS 변수 |
 | 여러 프로시저가 공유하는 규칙 | SQL 함수 `UFN_S_*` (권한 판정이 기존 예) |
