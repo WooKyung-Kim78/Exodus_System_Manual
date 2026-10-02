@@ -184,3 +184,29 @@ public class InputCommonCode
 
     public int ORDER_NUM { get; set; }
 }
+
+public class TableParamItem
+{
+    public long IDX { get; set; }
+    public string TITLE { get; set; } = null!;
+    public string FUNC_HTML { get; set; } = null!;
+    public int ORDER_NUM { get; set; }
+    public DateTime? REG_DT { get; set; }
+    public DateTime? UPT_DT { get; set; }
+}
+
+public class InputTableParam
+{
+    public long? IDX { get; set; }
+
+    [Required(ErrorMessage = "Title은 필수입니다.")]
+    [StringLength(200, ErrorMessage = "Title은 200자 이내로 입력하세요.")]
+    public string TITLE { get; set; } = null!;
+
+    [Required(ErrorMessage = "Function은 필수입니다.")]
+    [StringLength(20000, ErrorMessage = "Function 내용이 너무 깁니다.")]
+    public string FUNC_HTML { get; set; } = null!;
+
+    [Range(0, 999, ErrorMessage = "순서는 0 ~ 999 사이로 입력하세요.")]
+    public int ORDER_NUM { get; set; }
+}

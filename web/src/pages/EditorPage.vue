@@ -30,6 +30,10 @@ interface Block {
 interface Access {
   CAN_EDIT: string
 }
+interface TableParam {
+  TITLE: string
+  FUNC_HTML: string
+}
 interface SectionForm {
   SEC_ID?: number
   TITLE: string
@@ -61,6 +65,7 @@ const teams = ref<TeamOption[]>([])
 const historyOpen = ref(false)
 const historyLoading = ref(false)
 const history = ref<SectionHistoryItem[]>([])
+const tableParams = ref<TableParam[]>([])
 const specHtml = ref('')
 const specMessage = ref('')
 const specLoading = ref(false)
@@ -159,6 +164,39 @@ async function loadTeams() {
     teams.value = []
   }
 }
+async function loadTableParams() {
+  try {
+    tableParams.value = (await api<{ list: TableParam[] }>('/api/editor/table-params')).list
+  } catch {
+    tableParams.value = []
+  }
+}
+function tableColumns(table: TableState) {
+  return {
+    title: table.head.findIndex((name) => name.trim().toUpperCase() === 'TITLE'),
+    function: table.head.findIndex((name) => name.trim().toUpperCase() === 'FUNCTION'),
+  }
+}
+function tableFunctions(table: TableState, row: string[]) {
+  const { title } = tableColumns(table)
+  if (title < 0) return []
+  const key = row[title].trim().toUpperCase()
+  return tableParams.value.filter((item) => item.TITLE.trim().toUpperCase() === key)
+}
+function applyTableDefault(block: Block, row: string[]) {
+  if (!block.TABLE) return
+  const { function: functionColumn } = tableColumns(block.TABLE)
+  const options = tableFunctions(block.TABLE, row)
+  if (functionColumn >= 0 && !row[functionColumn]?.trim() && options[0]) row[functionColumn] = options[0].FUNC_HTML
+}
+function functionLabel(html: string) {
+  const element = document.createElement('div')
+  element.innerHTML = html
+  return element.textContent?.trim() || '내용 없음'
+}
+function selectTableFunction(row: string[], column: number, event: Event) {
+  row[column] = (event.target as HTMLSelectElement).value
+}
 async function save(block: Block) {
   if (!canEditActive.value) return
   saving.value = block.ELE_ID ?? 'new'
@@ -222,6 +260,7 @@ function addTableColumn(block: Block) {
   block.TABLE.head.push('')
   block.TABLE.align.push('left')
   block.TABLE.widths.push(0)
+  block.TABLE.rich.push(false)
   block.TABLE.rows.forEach((row) => row.push(''))
 }
 function removeTableColumn(block: Block, index: number) {
@@ -229,6 +268,7 @@ function removeTableColumn(block: Block, index: number) {
   block.TABLE.head.splice(index, 1)
   block.TABLE.align.splice(index, 1)
   block.TABLE.widths.splice(index, 1)
+  block.TABLE.rich.splice(index, 1)
   block.TABLE.rows.forEach((row) => row.splice(index, 1))
 }
 async function uploadImage(event: Event) {
@@ -500,7 +540,7 @@ watch(activeSecId, () => {
   void loadSpec()
 })
 onMounted(async () => {
-  await Promise.all([load(), loadTeams()])
+  await Promise.all([load(), loadTeams(), loadTableParams()])
 })
 </script>
 <template>
@@ -724,7 +764,38 @@ onMounted(async () => {
                             </button>
                           </td>
                           <td v-for="(_, column) in row" :key="column">
+                            <input
+                              v-if="column === tableColumns(block.TABLE).title"
+                              v-model="block.TABLE.rows[rowIndex][column]"
+                              list="table-title-options"
+                              :readonly="!canEditActive"
+                              :style="{ textAlign: block.TABLE.align[column] }"
+                              @change="applyTableDefault(block, row)"
+                            />
+                            <template v-else-if="column === tableColumns(block.TABLE).function">
+                              <select
+                                v-if="tableFunctions(block.TABLE, row).length > 0"
+                                :value="block.TABLE.rows[rowIndex][column]"
+                                :disabled="!canEditActive"
+                                @change="selectTableFunction(row, column, $event)"
+                              >
+                                <option
+                                  v-for="option in tableFunctions(block.TABLE, row)"
+                                  :key="option.FUNC_HTML"
+                                  :value="option.FUNC_HTML"
+                                >
+                                  {{ functionLabel(option.FUNC_HTML) }}
+                                </option>
+                              </select>
+                              <BlockEditor
+                                :model-value="block.TABLE.rows[rowIndex][column]"
+                                :read-only="!canEditActive"
+                                compact
+                                @update:model-value="block.TABLE.rows[rowIndex][column] = $event"
+                              />
+                            </template>
                             <textarea
+                              v-else
                               v-model="block.TABLE.rows[rowIndex][column]"
                               :readonly="!canEditActive"
                               :style="{ textAlign: block.TABLE.align[column] }"
@@ -734,6 +805,13 @@ onMounted(async () => {
                         </tr>
                       </tbody>
                     </table>
+                    <datalist id="table-title-options">
+                      <option
+                        v-for="title in [...new Set(tableParams.map((item) => item.TITLE))]"
+                        :key="title"
+                        :value="title"
+                      />
+                    </datalist>
                   </div>
                 </div>
               </div>

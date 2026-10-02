@@ -18,12 +18,25 @@ const protectedRoutes = [
   { path: '/manual', component: ManualListPage, meta: { menuKey: 'manual' } },
   { path: '/manual/detail', component: ManualDetailPage, meta: { menuKey: 'manual', hidePageHeader: true } },
   { path: '/manual/preview', component: PreviewPage, meta: { menuKey: 'manual', hidePageHeader: true } },
-  { path: '/editor', component: () => import('./pages/EditorPage.vue'), meta: { menuKey: 'manual', hidePageHeader: true } },
+  {
+    path: '/editor',
+    component: () => import('./pages/EditorPage.vue'),
+    meta: { menuKey: 'manual', hidePageHeader: true },
+  },
   { path: '/dev/styleguide', component: StyleguidePage, meta: { developmentOnly: true } },
   { path: '/admin/user', component: UserPage, meta: { menuKey: 'admin.user' } },
   { path: '/admin/code', component: CodePage, meta: { menuKey: 'admin.code' } },
+  {
+    path: '/admin/table-param',
+    component: () => import('./pages/admin/TableParamPage.vue'),
+    meta: { menuKey: 'admin.table-param' },
+  },
   { path: '/admin/setting', component: MailSettingPage, meta: { menuKey: 'admin.setting' } },
-  { path: '/admin/section-template', component: () => import('./pages/admin/SectionTemplatePage.vue'), meta: { menuKey: 'admin.section-template' } },
+  {
+    path: '/admin/section-template',
+    component: () => import('./pages/admin/SectionTemplatePage.vue'),
+    meta: { menuKey: 'admin.section-template' },
+  },
 ]
 
 export const router = createRouter({
@@ -37,7 +50,7 @@ export const router = createRouter({
   ],
 })
 
-router.beforeEach(async to => {
+router.beforeEach(async (to) => {
   if (to.meta.public) return true
   const session = useSessionStore()
   try {
@@ -48,5 +61,5 @@ router.beforeEach(async to => {
   }
   if (to.meta.developmentOnly && !session.bootstrap?.isDevelopment) return '/auth/error404'
   const menuKey = to.meta.menuKey as string | undefined
-  return !menuKey || session.user!.MENUS.some(menu => menu.KEY === menuKey) ? true : '/auth/error403'
+  return !menuKey || session.user!.MENUS.some((menu) => menu.KEY === menuKey) ? true : '/auth/error403'
 })

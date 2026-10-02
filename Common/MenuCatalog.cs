@@ -12,6 +12,7 @@ public static class MenuCatalog
         new("manual", "/manual", "Manuals", "Workspace", "file-document-outline", "시스템 매뉴얼을 조회하고 관리합니다.", new HashSet<string>(UserRoles.All)),
         new("admin.setting", "/admin/setting", "Settings", "Administration", "cog-outline", "SMTP 발송 환경과 발송 이력을 관리합니다.", new HashSet<string> { UserRoles.Admin, UserRoles.Supporter }),
         new("admin.code", "/admin/code", "Common Codes", "Administration", "code-tags", "미리보기 표지 문구와 로고를 관리합니다.", new HashSet<string> { UserRoles.Admin, UserRoles.Supporter }),
+        new("admin.table-param", "/admin/table-param", "Table Defaults", "Administration", "table-cog", "표 블록의 Title과 Function 기본값을 관리합니다.", new HashSet<string> { UserRoles.Admin }),
         new("admin.section-template", "/admin/section-template", "Section Templates", "Administration", "format-list-bulleted-square", "문서를 새로 만들 때 필수 목차가 자동으로 들어갑니다. 옵션 목차는 작성자가 편집기에서 골라 추가합니다.", new HashSet<string> { UserRoles.Admin }),
         new("admin.user", "/admin/user", "Users", "Administration", "account-group-outline", "계정, 역할, 승인 상태를 관리합니다.", new HashSet<string> { UserRoles.Admin }),
     ];

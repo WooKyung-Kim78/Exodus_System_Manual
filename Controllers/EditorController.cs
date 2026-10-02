@@ -197,6 +197,21 @@ public class EditorController : BaseController<EditorController>
 
     /* ================= 본문 블록 ================= */
 
+    /// 표 블록 Title 선택 목록. 관리자가 표 기본값에서 등록한다.
+    [AjaxAuth]
+    [HttpGet("table-params")]
+    [Produces("application/json")]
+    public IActionResult GetTableParams()
+    {
+        var list = _db.USP_S_SELECT_TABLE_PARAM_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_TABLE_PARAM_LIST")
+            .AsEnumerable()
+            .Select(p => new { p.TITLE, p.FUNC_HTML })
+            .ToList();
+
+        return JsonOk(new { list });
+    }
+
     [AjaxAuth]
     [HttpPost("block")]
     [ValidateAntiForgeryToken]
@@ -216,6 +231,9 @@ public class EditorController : BaseController<EditorController>
         }
 
         var safeHtml = _sanitizer.Clean(input.CONTENT_HTML);
+        var styleJson = input.ELE_TYPE == "TABLE"
+            ? TableStyleJsonSanitizer.Clean(input.STYLE_JSON, _sanitizer)
+            : input.STYLE_JSON;
 
         // ROW_VER 는 binary(8) 이라 타입을 명시하지 않으면 DBNull 이 nvarchar 로 전송되어 변환 오류가 난다.
         var parameters = new[]
@@ -230,7 +248,7 @@ public class EditorController : BaseController<EditorController>
             Param("@CONTENT_HTML", SqlDbType.NVarChar, safeHtml, -1),
             Param("@IMAGE_PATH", SqlDbType.NVarChar, input.IMAGE_PATH, 500),
             Param("@CAPTION", SqlDbType.NVarChar, input.CAPTION, 500),
-            Param("@STYLE_JSON", SqlDbType.NVarChar, input.STYLE_JSON, -1),
+            Param("@STYLE_JSON", SqlDbType.NVarChar, styleJson, -1),
             Param("@ROW_VER", SqlDbType.Binary, rowVer, 8),
             Param("@USER_ID", SqlDbType.VarChar, CurrentUserId!, 20),
         };

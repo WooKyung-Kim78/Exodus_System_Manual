@@ -41,7 +41,7 @@ import {
   Underline,
 } from 'ckeditor5'
 
-const props = defineProps<{ modelValue: string; uploadUrl?: string; readOnly?: boolean }>()
+const props = defineProps<{ modelValue: string; uploadUrl?: string; readOnly?: boolean; compact?: boolean }>()
 const emit = defineEmits<{ blur: [value: string]; 'update:modelValue': [value: string] }>()
 const value = ref(props.modelValue)
 const editor = ref<any>(null)
@@ -167,7 +167,7 @@ watch(
 )
 </script>
 <template>
-  <div class="block-editor">
+  <div class="block-editor" :class="{ compact: props.compact }">
     <Ckeditor
       v-model="value"
       :editor="ClassicEditor"
@@ -182,6 +182,9 @@ watch(
 <style scoped>
 .block-editor :deep(.ck-editor__editable_inline) {
   min-height: 18rem;
+}
+.block-editor.compact :deep(.ck-editor__editable_inline) {
+  min-height: 5rem;
 }
 
 @media (max-width: 680px) {

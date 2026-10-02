@@ -5,7 +5,7 @@ namespace ExodusSystemManual.Tests.Common;
 public class MenuCatalogTests
 {
     [Theory]
-    [InlineData(UserRoles.Admin, new[] { "dashboard", "manual", "admin.setting", "admin.code", "admin.section-template", "admin.user" })]
+    [InlineData(UserRoles.Admin, new[] { "dashboard", "manual", "admin.setting", "admin.code", "admin.table-param", "admin.section-template", "admin.user" })]
     [InlineData(UserRoles.Supporter, new[] { "dashboard", "manual", "admin.setting", "admin.code" })]
     [InlineData(UserRoles.User, new[] { "dashboard", "manual" })]
     [InlineData(UserRoles.Reader, new[] { "dashboard", "manual" })]
