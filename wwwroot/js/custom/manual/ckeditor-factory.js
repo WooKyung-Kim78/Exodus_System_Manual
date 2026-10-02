@@ -113,7 +113,9 @@ window.createBlockEditor = async function (element, initialHtml, options) {
     const editor = await ClassicEditor.create(element, {
         licenseKey: 'GPL',
         plugins: PLUGINS,
-        toolbar: { items: TOOLBAR, shouldNotGroupWhenFull: true },
+        toolbar: opts.toolbar
+            ? { items: opts.toolbar, shouldNotGroupWhenFull: false }
+            : { items: TOOLBAR, shouldNotGroupWhenFull: true },
         table: {
             contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells', 'tableProperties', 'tableCellProperties'],
         },

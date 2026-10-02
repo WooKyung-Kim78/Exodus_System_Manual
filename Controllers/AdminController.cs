@@ -486,4 +486,60 @@ public class AdminController : BaseController<AdminController>
 
         return JsonOk(new { path = result.WebPath });
     }
+
+    /* ================= 표 Title / Function ================= */
+
+    [Auth("ADMIN")]
+    [HttpGet("table-param")]
+    public IActionResult TableParam() => View();
+
+    [AjaxAuth("ADMIN")]
+    [HttpGet("table-param/list")]
+    [Produces("application/json")]
+    public IActionResult GetTableParams()
+    {
+        var list = _db.USP_S_SELECT_TABLE_PARAM_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_TABLE_PARAM_LIST")
+            .AsEnumerable().ToList();
+
+        return JsonOk(new { list });
+    }
+
+    [AjaxAuth("ADMIN")]
+    [HttpPost("table-param")]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
+    public IActionResult MergeTableParam(InputTableParam input)
+    {
+        if (!ModelState.IsValid) return JsonFail(StatusCodes.Status400BadRequest, FirstError());
+
+        var html = _sanitizer.Clean(input.FUNC_HTML) ?? string.Empty;
+
+        var result = _db.ResultModel
+            .FromSqlRaw("EXECUTE dbo.USP_S_MERGE_TABLE_PARAM {0}, {1}, {2}, {3}, {4}",
+                (object?)input.IDX ?? DBNull.Value,
+                input.TITLE.Trim(), html, input.ORDER_NUM, CurrentUserId!)
+            .AsEnumerable().FirstOrDefault();
+
+        if (result is null || result.Success == 0)
+            return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "저장하지 못했습니다.");
+
+        return JsonOk(new { IDX = result.ReturnMsg });
+    }
+
+    [AjaxAuth("ADMIN")]
+    [HttpDelete("table-param")]
+    [ValidateAntiForgeryToken]
+    [Produces("application/json")]
+    public IActionResult DeleteTableParam(long idx)
+    {
+        var result = _db.ResultModel
+            .FromSqlRaw("EXECUTE dbo.USP_S_DELETE_TABLE_PARAM {0}, {1}", idx, CurrentUserId!)
+            .AsEnumerable().FirstOrDefault();
+
+        if (result is null || result.Success == 0)
+            return JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "삭제하지 못했습니다.");
+
+        return JsonOk();
+    }
 }

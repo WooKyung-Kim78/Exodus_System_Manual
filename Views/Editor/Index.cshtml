@@ -169,7 +169,7 @@
                                                     :style="{ width: b.TABLE.widths[ci] ? b.TABLE.widths[ci] + '%' : 'auto' }">
                                                     <input type="text" class="form-control form-control-sm fw-bold text-center"
                                                            v-model="b.TABLE.head[ci]" :disabled="!canEditActive"
-                                                           @@input="markDirty(b)" maxlength="200" placeholder="머리글" />
+                                                           @@input="onHeadInput(b)" maxlength="200" placeholder="머리글" />
                                                     <div class="d-flex align-items-center gap-1 mt-1">
                                                         <select class="form-select form-select-sm px-2 fs-9" v-model="b.TABLE.align[ci]"
                                                                 :disabled="!canEditActive" @@change="markDirty(b)" title="정렬">
@@ -196,7 +196,28 @@
                                                             @@click="removeTableRow(b, ri)" title="행 삭제">×</button>
                                                 </td>
                                                 <td v-for="(c, ci) in r" :key="'c' + ci">
-                                                    <textarea class="form-control form-control-sm" rows="2"
+                                                    <div v-if="ci === noCol(b)" class="form-control form-control-sm bg-light text-muted"
+                                                         :style="{ textAlign: b.TABLE.align[ci] || 'left' }" title="자동 번호">{{ ri + 1 }}</div>
+                                                    <title-select v-else-if="isParamCol(b, ci, 'title')" :value="c" :options="paramTitles"
+                                                                  :disabled="!canEditActive" :align="b.TABLE.align[ci] || 'left'"
+                                                                  @@input="setTitle(b, ri, ci, $event)"></title-select>
+                                                    <template v-else-if="b.TABLE.rich[ci]">
+                                                        <select v-if="isParamCol(b, ci, 'func') && paramOptions(b, ri).length > 1"
+                                                                class="form-select form-select-sm fs-9 mb-1" :disabled="!canEditActive"
+                                                                :value="paramIndex(b, ri, ci)"
+                                                                @@change="pickParam(b, ri, ci, $event.target.value)">
+                                                            <option :value="-1" disabled>등록된 Function 선택 ({{ paramOptions(b, ri).length }})</option>
+                                                            <option v-for="(f, fi) in paramOptions(b, ri)" :key="fi" :value="fi">{{ paramLabel(f) }}</option>
+                                                        </select>
+                                                        <!-- 서버가 정제한 HTML 만 들어온다 (EditorController.CleanTableJson). -->
+                                                        <div v-if="isCellEditing(b, ri, ci)" class="cell-editor">
+                                                            <div :id="'cell-' + b.ELE_ID + '-' + ri + '-' + ci"></div>
+                                                        </div>
+                                                        <div v-else class="cell-rich" :class="{ 'is-disabled': !canEditActive }"
+                                                             :style="{ textAlign: b.TABLE.align[ci] || 'left' }"
+                                                             v-html="c" @@click="openCellEditor(b, ri, ci)"></div>
+                                                    </template>
+                                                    <textarea v-else class="form-control form-control-sm" :rows="cellRows(c)"
                                                               :style="{ textAlign: b.TABLE.align[ci] || 'left' }"
                                                               v-model="b.TABLE.rows[ri][ci]" :disabled="!canEditActive"
                                                               @@input="markDirty(b)"></textarea>
@@ -447,5 +468,6 @@
     </script>
     <script type="module" src="~/js/custom/manual/ckeditor-factory.js" asp-append-version="true"></script>
     <script>window.HEADING_DEFAULTS = @Json.Serialize(HeadingStyle.ClientDefaults());</script>
+    <script src="~/js/custom/manual/title-select.js" asp-append-version="true"></script>
     <script src="~/js/custom/manual/editor.js" asp-append-version="true"></script>
 }

@@ -1,4 +1,6 @@
 using System.Data;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using ExodusSystemManual.Controllers.Attributes;
 using ExodusSystemManual.Controllers.Common;
 using ExodusSystemManual.Data;
@@ -216,6 +218,21 @@ public class EditorController : BaseController<EditorController>
 
     /* ================= 본문 블록 ================= */
 
+    /// 표 블록 Title 선택 목록. 관리자가 /admin/table-param 에서 등록한다.
+    [AjaxAuth]
+    [HttpGet("table-params")]
+    [Produces("application/json")]
+    public IActionResult GetTableParams()
+    {
+        var list = _db.USP_S_SELECT_TABLE_PARAM_LIST
+            .FromSqlRaw("EXECUTE dbo.USP_S_SELECT_TABLE_PARAM_LIST")
+            .AsEnumerable()
+            .Select(p => new { p.TITLE, p.FUNC_HTML })
+            .ToList();
+
+        return JsonOk(new { list });
+    }
+
     [AjaxAuth]
     [HttpPost("block")]
     [ValidateAntiForgeryToken]
@@ -235,6 +252,7 @@ public class EditorController : BaseController<EditorController>
         }
 
         var safeHtml = _sanitizer.Clean(input.CONTENT_HTML);
+        var styleJson = input.ELE_TYPE == "TABLE" ? CleanTableJson(input.STYLE_JSON) : input.STYLE_JSON;
 
         // ROW_VER 는 binary(8) 이라 타입을 명시하지 않으면 DBNull 이 nvarchar 로 전송되어 변환 오류가 난다.
         var parameters = new[]
@@ -249,7 +267,7 @@ public class EditorController : BaseController<EditorController>
             Param("@CONTENT_HTML", SqlDbType.NVarChar, safeHtml, -1),
             Param("@IMAGE_PATH", SqlDbType.NVarChar, input.IMAGE_PATH, 500),
             Param("@CAPTION", SqlDbType.NVarChar, input.CAPTION, 500),
-            Param("@STYLE_JSON", SqlDbType.NVarChar, input.STYLE_JSON, -1),
+            Param("@STYLE_JSON", SqlDbType.NVarChar, styleJson, -1),
             Param("@ROW_VER", SqlDbType.Binary, rowVer, 8),
             Param("@USER_ID", SqlDbType.VarChar, CurrentUserId!, 20),
         };
@@ -397,4 +415,30 @@ public class EditorController : BaseController<EditorController>
         => result is null || result.Success == 0
             ? JsonFail(StatusCodes.Status400BadRequest, result?.ReturnMsg ?? "요청을 처리하지 못했습니다.")
             : JsonOk();
+
+    /// 표의 서식 열(rich)은 편집기가 HTML 로 그리므로 본문과 같이 정제한다.
+    private string? CleanTableJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return json;
+
+        JsonNode? root;
+        try { root = JsonNode.Parse(json); }
+        catch (JsonException) { return null; }
+
+        if (root is not JsonObject table) return null;
+        if (table["rich"] is not JsonArray rich || table["rows"] is not JsonArray rows) return json;
+
+        foreach (var row in rows.OfType<JsonArray>())
+        {
+            for (var i = 0; i < row.Count && i < rich.Count; i++)
+            {
+                if (rich[i] is not JsonValue flag || !flag.TryGetValue<bool>(out var isRich) || !isRich) continue;
+                row[i] = row[i] is JsonValue cell && cell.TryGetValue<string>(out var html)
+                    ? _sanitizer.Clean(html)
+                    : string.Empty;
+            }
+        }
+
+        return table.ToJsonString();
+    }
 }

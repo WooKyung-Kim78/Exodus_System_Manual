@@ -208,6 +208,40 @@
     margin: 0 auto;
 }
 
+/* 표 블록의 서식 칸(Function). 누르면 그 칸에만 편집기가 뜬다. */
+.cell-rich {
+    min-height: 2.6rem;
+    padding: .4rem .6rem;
+    border: 1px solid #d8dae5;
+    border-radius: .475rem;
+    background: #fff;
+    cursor: text;
+    font-size: var(--doc-size-table, 9.5pt);
+    line-height: var(--doc-line-height);
+}
+.cell-rich:hover { border-color: #009ef7; }
+.cell-rich:empty::before { content: '눌러서 입력'; color: #a1a5b7; }
+.cell-rich.is-disabled { background: #f5f8fa; cursor: default; }
+.cell-rich.is-disabled:hover { border-color: #d8dae5; }
+.cell-rich p, .cell-rich ul, .cell-rich ol { margin: 0; }
+
+.block-body .cell-editor .ck-editor__main { min-height: 0; resize: none; overflow: visible; }
+.block-body .cell-editor .ck-editor__editable,
+.block-body .cell-editor .ck-editor__editable.ck-focused { min-height: 2.6rem; padding: .4rem .6rem; }
+.block-body .cell-editor .ck-editor__editable,
+.block-body .cell-editor .ck-editor__editable * { font-size: var(--doc-size-table, 9.5pt) !important; }
+.block-body .cell-editor .ck.ck-toolbar { position: static; }
+
+/* 표 Title 검색 셀렉트. 표의 overflow 에 잘리지 않게 화면 기준으로 띄운다. */
+.card.title-select-menu {
+    position: fixed;
+    z-index: 1060;
+    max-width: 360px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+.title-select-menu a.active { background: #f1faff; color: #009ef7 !important; }
+
 .image-block-caption {
     text-align: center;
     font-size: .8125rem;

@@ -39,17 +39,64 @@ function withUnderline(css, flag) {
 
 var BLOCK_LABEL = { TEXT: '텍스트', IMAGE: '이미지', TABLE: '표' };
 var CELL_ALIGN = { left: 'left', center: 'center', right: 'right' };
+var FN_TOOLBAR = [
+    'undo', 'redo', '|', 'fontColor', 'fontBackgroundColor', '|',
+    'bold', 'italic', 'underline', 'strikethrough', 'subscript', 'superscript', 'removeFormat', '|',
+    'bulletedList', 'numberedList',
+];
 
 /* ---------- 표 블록 ----------
    편집용 격자 데이터는 STYLE_JSON 에, 미리보기·PDF 가 그대로 그릴 HTML 은
-   CONTENT_HTML 에 넣는다. 두 값은 저장 시점에 함께 만든다. */
+   CONTENT_HTML 에 넣는다. 두 값은 저장 시점에 함께 만든다.
+   rich 가 true 인 열은 셀 값이 HTML 이다(서버가 정제한다). */
 function newTable() {
     return {
         head: ['No.', 'Title', 'Function'],
         align: ['center', 'center', 'left'],
         widths: [10, 25, 65],
+        rich: [false, false, true],
         rows: [['1', '', ''], ['2', '', '']],
     };
+}
+
+// 머리글이 Title / Function 인 열에 등록된 목록을 붙인다.
+function tableParamCols(t) {
+    var head = t.head.map(function (h) { return $.trim(h).toLowerCase(); });
+    var title = head.indexOf('title');
+    var func = head.indexOf('function');
+    return title >= 0 && func >= 0 ? { title: title, func: func } : null;
+}
+
+function tableNoCol(t) {
+    return t.head.map(function (h) { return $.trim(h).toLowerCase(); })
+        .findIndex(function (h) { return h === 'no' || h === 'no.'; });
+}
+
+// 머리글이 No. 인 열은 사용자가 쓰지 않고 행 순서대로 매긴다.
+function renumber(t) {
+    var col = tableNoCol(t);
+    if (col < 0) return;
+    t.rows.forEach(function (r, i) { r.splice(col, 1, String(i + 1)); });
+}
+
+function textToHtml(v) {
+    var s = String(v == null ? '' : v);
+    if (!$.trim(s)) return '';
+    return '<p>' + escapeHtml(s).replace(/  /g, ' &nbsp;').replace(/\r?\n/g, '<br>') + '</p>';
+}
+
+// 비교·목록 표시용 글자만. DOMParser 문서는 스크립트를 실행하지 않는다.
+function htmlText(html) {
+    var doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+    return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+// 예전 표는 Function 이 평문이다. 편집기로 쓸 수 있게 HTML 로 바꾼다.
+function syncRich(t) {
+    var cols = tableParamCols(t);
+    if (!cols || t.rich[cols.func]) return;
+    t.rows.forEach(function (r) { r[cols.func] = textToHtml(r[cols.func]); });
+    t.rich[cols.func] = true;
 }
 
 function normalizeTable(json) {
@@ -65,12 +112,16 @@ function normalizeTable(json) {
         return head.map(function (_, i) { return text(src[i]); });
     });
 
-    return {
+    var table = {
         head: head,
         align: head.map(function (_, i) { return CELL_ALIGN[t.align && t.align[i]] || 'left'; }),
         widths: head.map(function (_, i) { return Number(t.widths && t.widths[i]) || 0; }),
+        rich: head.map(function (_, i) { return !!(t.rich && t.rich[i] === true); }),
         rows: rows.length ? rows : [head.map(function () { return ''; })],
     };
+    syncRich(table);
+    renumber(table);
+    return table;
 }
 
 function escapeHtml(v) {
@@ -97,7 +148,7 @@ function tableHtml(t) {
 
     var body = '<tbody>' + t.rows.map(function (r) {
         return '<tr>' + r.map(function (c, i) {
-            return '<td style="text-align:' + (CELL_ALIGN[t.align[i]] || 'left') + '">' + cellHtml(c) + '</td>';
+            return '<td style="text-align:' + (CELL_ALIGN[t.align[i]] || 'left') + '">' + (t.rich[i] ? c : cellHtml(c)) + '</td>';
         }).join('') + '</tr>';
     }).join('') + '</tbody>';
 
@@ -146,6 +197,8 @@ new Vue({
         specHtml: '',
         specMessage: '',
         specLoading: false,
+        tableParams: [],
+        cellEdit: null,
     },
     computed: {
         canEdit: function () { return this.access && this.access.CAN_EDIT === 'Y'; },
@@ -181,6 +234,27 @@ new Vue({
             var self = this;
             return Object.keys(this.dirty).some(function (id) { return self.dirty[id]; });
         },
+        // Title(대소문자 무시) → 등록된 Function 목록. 첫 번째가 기본값이다.
+        paramMap: function () {
+            var map = {};
+            this.tableParams.forEach(function (p) {
+                var key = $.trim(p.TITLE).toUpperCase();
+                (map[key] = map[key] || []).push(p.FUNC_HTML);
+            });
+            return map;
+        },
+        paramTitles: function () {
+            var seen = {};
+            return this.tableParams
+                .map(function (p) { return p.TITLE; })
+                .filter(function (t) { return seen[t] ? false : (seen[t] = true); });
+        },
+        // 편집기를 거치면 HTML 표기가 달라지므로 글자로 비교한다.
+        paramFuncSet: function () {
+            var set = {};
+            this.tableParams.forEach(function (p) { set[htmlText(p.FUNC_HTML)] = true; });
+            return set;
+        },
     },
     watch: {
         activeBlocks: function () { this.$nextTick(this.syncEditors); },
@@ -195,6 +269,7 @@ new Vue({
         // CKEditor 인스턴스는 객체 그래프가 커서 Vue 반응형으로 만들면 안 된다.
         // data 가 아닌 인스턴스 속성으로 두면 반응형 변환을 피할 수 있다.
         this._editors = {};
+        this._cellEditor = null;
     },
     mounted: function () {
         var self = this;
@@ -206,6 +281,7 @@ new Vue({
         }
         self.callData();
         self.callTeams();
+        self.callTableParams();
         // 미리보기에서 뒤로 가기로 돌아오면 bfcache 복원이라 mounted 가 다시 돌지 않는다.
         window.addEventListener('pageshow', function (e) {
             if (!e.persisted || self.hasDirty) return;
@@ -270,6 +346,10 @@ new Vue({
         callTeams: function () {
             var self = this;
             $.get('/manual/teams').done(function (res) { self.teams = res.data.teams; });
+        },
+        callTableParams: function () {
+            var self = this;
+            $.get('/editor/table-params').done(function (res) { self.tableParams = res.data.list; });
         },
 
         /* ---------- 목차 ---------- */
@@ -531,6 +611,7 @@ new Vue({
 
             $.ajax({ url: '/editor/block', method: 'DELETE', data: { eleId: b.ELE_ID, mid: self.mid } })
                 .done(function () {
+                    if (self.cellEdit && self.cellEdit.id === b.ELE_ID) self.closeCellEditor();
                     self.destroyEditor(b.ELE_ID);
                     self.$delete(self.dirty, b.ELE_ID);
                     self.blocks = self.blocks.filter(function (x) { return x.ELE_ID !== b.ELE_ID; });
@@ -543,6 +624,7 @@ new Vue({
             self.saveState = '저장 중...';
 
             if (b.ELE_TYPE === 'TABLE' && b.TABLE) {
+                renumber(b.TABLE);
                 b.STYLE_JSON = JSON.stringify(b.TABLE);
                 b.CONTENT_HTML = tableHtml(b.TABLE);
             }
@@ -572,27 +654,133 @@ new Vue({
         /* ---------- 표 블록 ---------- */
         addTableRow: function (b) {
             b.TABLE.rows.push(b.TABLE.head.map(function () { return ''; }));
+            renumber(b.TABLE);
             this.markDirty(b);
         },
         removeTableRow: function (b, index) {
             if (b.TABLE.rows.length <= 1) return;
+            this.closeCellEditor();
             b.TABLE.rows.splice(index, 1);
+            renumber(b.TABLE);
             this.markDirty(b);
         },
         addTableCol: function (b) {
+            this.closeCellEditor();
             b.TABLE.head.push('');
             b.TABLE.align.push('left');
             b.TABLE.widths.push(0);
+            b.TABLE.rich.push(false);
             b.TABLE.rows.forEach(function (r) { r.push(''); });
             this.markDirty(b);
         },
         removeTableCol: function (b, index) {
             if (b.TABLE.head.length <= 1) return;
+            this.closeCellEditor();
             b.TABLE.head.splice(index, 1);
             b.TABLE.align.splice(index, 1);
             b.TABLE.widths.splice(index, 1);
+            b.TABLE.rich.splice(index, 1);
             b.TABLE.rows.forEach(function (r) { r.splice(index, 1); });
             this.markDirty(b);
+        },
+        onHeadInput: function (b) {
+            syncRich(b.TABLE);
+            renumber(b.TABLE);
+            this.markDirty(b);
+        },
+        noCol: function (b) { return tableNoCol(b.TABLE); },
+        setTitle: function (b, ri, ci, title) {
+            this.$set(b.TABLE.rows[ri], ci, title);
+            this.markDirty(b);
+            this.applyParam(b, ri);
+        },
+        isParamCol: function (b, ci, kind) {
+            var cols = tableParamCols(b.TABLE);
+            return !!cols && cols[kind] === ci;
+        },
+        paramOptions: function (b, ri) {
+            var cols = tableParamCols(b.TABLE);
+            if (!cols) return [];
+            return this.paramMap[$.trim(b.TABLE.rows[ri][cols.title]).toUpperCase()] || [];
+        },
+        paramIndex: function (b, ri, ci) {
+            var key = htmlText(b.TABLE.rows[ri][ci]);
+            return this.paramOptions(b, ri).map(htmlText).indexOf(key);
+        },
+        paramLabel: function (html) {
+            var s = htmlText(html);
+            return s.length > 80 ? s.slice(0, 80) + '…' : s;
+        },
+        applyParam: function (b, ri) {
+            var cols = tableParamCols(b.TABLE);
+            var options = this.paramOptions(b, ri);
+            if (!cols || !options.length || this.paramIndex(b, ri, cols.func) >= 0) return;
+
+            // 사용자가 직접 고친 내용은 확인 없이 덮지 않는다.
+            var current = htmlText(b.TABLE.rows[ri][cols.func]);
+            if (current && !this.paramFuncSet[current] &&
+                !confirm('작성된 Function 을 등록된 내용으로 바꿉니다.')) return;
+
+            this.setCell(b, ri, cols.func, options[0]);
+        },
+        pickParam: function (b, ri, ci, index) {
+            var f = this.paramOptions(b, ri)[Number(index)];
+            if (f != null) this.setCell(b, ri, ci, f);
+        },
+        setCell: function (b, ri, ci, value) {
+            var ed = this._cellEditor;
+            if (ed && ed !== 'pending' && this.isCellEditing(b, ri, ci)) ed.setData(value);
+            this.$set(b.TABLE.rows[ri], ci, value);
+            this.markDirty(b);
+        },
+        cellRows: function (v) {
+            return Math.min(8, Math.max(2, String(v || '').split('\n').length));
+        },
+
+        /* 서식 열은 누른 칸에만 편집기를 띄운다. 행마다 만들면 표가 무겁다. */
+        isCellEditing: function (b, ri, ci) {
+            var e = this.cellEdit;
+            return !!e && e.id === b.ELE_ID && e.ri === ri && e.ci === ci;
+        },
+        openCellEditor: function (b, ri, ci) {
+            var self = this;
+            if (!self.canEditActive || !self.ckReady || self.isCellEditing(b, ri, ci)) return;
+
+            self.closeCellEditor();
+            var target = { id: b.ELE_ID, ri: ri, ci: ci };
+            self.cellEdit = target;
+            self._cellEditor = 'pending';
+
+            self.$nextTick(function () {
+                var host = document.getElementById('cell-' + b.ELE_ID + '-' + ri + '-' + ci);
+                if (!host || self.cellEdit !== target) return;
+
+                window.createBlockEditor(host, b.TABLE.rows[ri][ci], {
+                    toolbar: FN_TOOLBAR,
+                    onChange: function (html) {
+                        if (self.cellEdit !== target || html === b.TABLE.rows[ri][ci]) return;
+                        self.$set(b.TABLE.rows[ri], ci, html);
+                        self.markDirty(b);
+                    },
+                    onBlur: function () {
+                        setTimeout(function () { if (self.cellEdit === target) self.closeCellEditor(); }, 0);
+                    },
+                }).then(function (editor) {
+                    if (self.cellEdit !== target) { editor.destroy(); return; }
+                    self._cellEditor = editor;
+                    editor.editing.view.focus();
+                }).catch(function (err) {
+                    if (self.cellEdit === target) self.closeCellEditor();
+                    console.error('CKEditor 초기화 실패', err);
+                    toastError('편집기를 불러오지 못했습니다.');
+                });
+            });
+        },
+        closeCellEditor: function () {
+            var ed = this._cellEditor;
+            if (ed && ed !== 'pending' && ed.destroy) ed.destroy();
+            this._cellEditor = null;
+            this.cellEdit = null;
         },
         saveActiveBlocks: function () {
             var self = this;
@@ -644,6 +832,7 @@ new Vue({
         },
         destroyEditors: function () {
             var self = this;
+            self.closeCellEditor();
             Object.keys(self._editors).forEach(function (id) { self.destroyEditor(id); });
         },
 

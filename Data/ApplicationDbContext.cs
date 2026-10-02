@@ -40,6 +40,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserAdminItem> USP_S_SELECT_USER_LIST { get; set; } = null!;
     public DbSet<SectionHistoryItem> USP_S_SELECT_SECTION_HISTORY { get; set; } = null!;
     public DbSet<CommonCodeItem> USP_S_SELECT_COMMON_CODE_LIST { get; set; } = null!;
+    public DbSet<TableParamItem> USP_S_SELECT_TABLE_PARAM_LIST { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,5 +62,6 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<UserAdminItem>().HasNoKey().ToView(null);
         modelBuilder.Entity<SectionHistoryItem>().HasNoKey().ToView(null);
         modelBuilder.Entity<CommonCodeItem>().HasNoKey().ToView(null);
+        modelBuilder.Entity<TableParamItem>().HasNoKey().ToView(null);
     }
 }

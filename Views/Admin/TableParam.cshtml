@@ -1,0 +1,112 @@
+@{
+    ViewData["Title"] = "표 Title / Function";
+}
+
+<div class="container-fluid" id="app" v-cloak>
+    <div class="d-flex align-items-center justify-content-between mb-5">
+        <div>
+            <h1 class="h4 mb-1">표 Title / Function</h1>
+            <div class="text-muted fs-7">편집기 표에서 Title 을 고르면 여기 등록된 Function 이 채워집니다. 같은 Title 에 여러 개를 두면 순서가 가장 앞선 것이 기본값입니다.</div>
+        </div>
+        <button class="btn btn-primary" @@click="openForm(null)">+ 항목 추가</button>
+    </div>
+
+    <div class="card">
+        <div class="card-header align-items-center">
+            <h3 class="card-title">목록 <span class="text-muted fs-7 ms-2">{{ filtered.length }} / {{ list.length }}</span></h3>
+            <div class="card-toolbar">
+                <input type="text" class="form-control form-control-sm w-250px" v-model.trim="keyword"
+                       placeholder="Title · Function 검색" />
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div v-if="loading" class="text-center text-muted py-15">불러오는 중...</div>
+            <div v-else-if="!filtered.length" class="text-center text-muted py-15">항목이 없습니다.</div>
+            <table v-else class="table table-row-bordered align-middle mb-0">
+                <thead class="fw-bold fs-8 text-muted bg-light">
+                    <tr>
+                        <th class="ps-5" style="width:220px">Title</th>
+                        <th>Function</th>
+                        <th class="text-center" style="width:70px">순서</th>
+                        <th class="text-end pe-5" style="width:130px">관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="p in filtered" :key="p.IDX">
+                        <td class="ps-5 fw-semibold">{{ p.TITLE }}</td>
+                        <!-- 저장 시 서버에서 정제한 HTML 이다. -->
+                        <td class="fs-8 param-func" v-html="p.FUNC_HTML"></td>
+                        <td class="text-center text-muted fs-8">{{ p.ORDER_NUM }}</td>
+                        <td class="text-end pe-5">
+                            <button class="btn btn-sm btn-light py-1 px-2" @@click="openForm(p)">수정</button>
+                            <button class="btn btn-sm btn-light-danger py-1 px-2" @@click="remove(p)">삭제</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" tabindex="-1" id="paramModal">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ form.IDX ? '항목 수정' : '항목 추가' }}</h5>
+                    <button type="button" class="btn-close" @@click="closeForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div v-if="formError" class="alert alert-danger py-3">{{ formError }}</div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-9">
+                            <label class="form-label required">Title</label>
+                            <input type="text" class="form-control" v-model="form.TITLE" maxlength="200"
+                                   list="paramTitleList" placeholder="RF OUTPUT" />
+                            <datalist id="paramTitleList">
+                                <option v-for="t in titles" :key="t" :value="t"></option>
+                            </datalist>
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label">순서</label>
+                            <input type="number" class="form-control" v-model.number="form.ORDER_NUM" min="0" max="999" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label required">Function</label>
+                        <div class="param-editor-wrap">
+                            <div v-if="editorLoading" class="param-editor-loading">편집기를 불러오는 중...</div>
+                            <div id="paramFuncEditor"></div>
+                        </div>
+                        <div class="form-text">글자색·굵기 등 서식이 표에 그대로 들어갑니다.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" @@click="closeForm">취소</button>
+                    <button type="button" class="btn btn-primary" :disabled="saving" @@click="save">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section css {
+    <link rel="stylesheet" href="~/assets/plugins/custom/ckeditor/ckeditor5.min.css" />
+    <style>
+        /* CKEditor 드롭다운은 body 에 붙어 모달(1050) 아래로 깔린다. */
+        :root { --ck-z-panel: 1200; --ck-z-modal: 1200; }
+
+        .param-func p, .param-func ul, .param-func ol { margin: 0; }
+        .param-editor-wrap { position: relative; }
+        .param-editor-wrap .ck-editor__editable { min-height: 160px; }
+        .param-editor-wrap .ck-editor__editable p { margin: 0; }
+        .param-editor-loading { display: grid; place-items: center; position: absolute; inset: 0; z-index: 1; min-height: 160px; color: #7e8299; background: #fff; }
+    </style>
+}
+
+@section scripts {
+    <script type="importmap">
+        { "imports": { "ckeditor5": "/assets/plugins/custom/ckeditor/ckeditor5.min.js" } }
+    </script>
+    <script type="module" src="~/js/custom/manual/ckeditor-factory.js" asp-append-version="true"></script>
+    <script src="~/js/custom/admin/tableParam.js" asp-append-version="true"></script>
+}
