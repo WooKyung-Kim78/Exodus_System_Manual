@@ -5,10 +5,20 @@ $(function () {
     var $btnFlow = $('#btnFlow');
     var $btnPages = $('#btnPages');
     var $stage = $('.preview-stage');
+    var $loading = $('#pdfLoading');
     var frame = document.getElementById('pdfFrame');
     var sheet = document.getElementById('docSheet');
     var mid = $btn.data('mid');
     var pdfPromise = null;
+    var pagesMode = false;
+    var frameReady = false;
+
+    // PDF 뷰어가 다 뜨기 전에는 빈 화면 대신 로딩 표시를 보여 준다.
+    frame.addEventListener('load', function () {
+        if (!frame.src) return;
+        frameReady = true;
+        setMode(pagesMode);
+    });
 
     // 화면 내용은 이 페이지를 연 시점 기준이므로 PDF 도 한 번만 만들어 다운로드와 페이지 보기가 같이 쓴다.
     function loadPdf() {
@@ -44,22 +54,25 @@ $(function () {
     }
 
     function setMode(pages) {
+        pagesMode = pages;
+        var loading = pages && !frameReady;
         $btnFlow.toggleClass('btn-secondary', !pages).toggleClass('btn-light', pages);
         $btnPages.toggleClass('btn-secondary', pages).toggleClass('btn-light', !pages);
         $stage.toggleClass('d-none', pages);
-        $(frame).toggleClass('d-none', !pages);
+        $loading.toggleClass('d-none', !loading);
+        $(frame).toggleClass('d-none', !pages || loading);
     }
 
     $btnFlow.on('click', function () { setMode(false); });
 
     $btnPages.on('click', function () {
         if (!mid) return;
-        if (frame.src) { setMode(true); return; }
+        setMode(true);
+        if (frame.src) return;
 
         loadPdf().then(function (blob) {
             frame.src = URL.createObjectURL(blob);
-            setMode(true);
-        }, function () { });
+        }, function () { setMode(false); });
     });
 
     $btn.on('click', function () {

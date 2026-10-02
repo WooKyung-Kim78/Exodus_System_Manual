@@ -9,7 +9,7 @@ new Vue({
     data: {
         loading: true,
         list: [],
-        filter: { label: '', cooling: '' },
+        filter: { label: 'EXODUS', cooling: '' },
         teams: [],
         form: {},
         formError: '',
@@ -82,13 +82,13 @@ new Vue({
         openForm: function (t) {
             this.formError = '';
             this.form = t
-                ? { TPL_ID: t.TPL_ID, LABEL: t.LABEL || '', COOLING: t.COOLING || '',
+                ? { TPL_ID: t.TPL_ID, LABEL: t.LABEL || 'EXODUS', COOLING: t.COOLING || '',
                     SEC_LEVEL: t.SEC_LEVEL, SEC_NO: t.SEC_NO || '', TITLE: t.TITLE,
                     IS_MANDATORY: t.IS_MANDATORY, ASSIGNED_TEAM: t.ASSIGNED_TEAM || '',
                     CONTENT_HTML: t.CONTENT_HTML || '', TITLE_ALIGN: t.TITLE_ALIGN || 'LEFT',
                     SEC_TYPE: t.SEC_TYPE || 'NORMAL', SHOW_IN_TOC: t.SHOW_IN_TOC || 'Y',
                     TITLE_UNDERLINE: t.TITLE_UNDERLINE || 'N' }
-                : { TPL_ID: null, LABEL: this.filter.label, COOLING: this.filter.cooling,
+                : { TPL_ID: null, LABEL: this.filter.label || 'EXODUS', COOLING: this.filter.cooling,
                     SEC_LEVEL: 1, SEC_NO: '', TITLE: '', IS_MANDATORY: 'Y', ASSIGNED_TEAM: '',
                     CONTENT_HTML: '', TITLE_ALIGN: 'LEFT', SEC_TYPE: 'NORMAL',
                     SHOW_IN_TOC: 'Y', TITLE_UNDERLINE: 'N' };

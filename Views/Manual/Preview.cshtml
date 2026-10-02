@@ -24,6 +24,10 @@
 
 <partial name="_DocSheet" model="Model" />
 <iframe id="pdfFrame" class="preview-pages d-none" title="페이지 보기"></iframe>
+<div id="pdfLoading" class="preview-loading d-none">
+    <div class="spinner-border text-primary" role="status"></div>
+    <div class="mt-4 text-gray-600">페이지를 만드는 중입니다...</div>
+</div>
 
 @section scripts {
     <script src="~/js/custom/manual/preview.js" asp-append-version="true"></script>

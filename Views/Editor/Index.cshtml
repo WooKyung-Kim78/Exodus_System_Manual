@@ -104,9 +104,7 @@
                             <button class="btn btn-sm btn-light-primary" :disabled="!canEditActive" @@click="addBlock('TEXT')">+ 텍스트</button>
                             <button class="btn btn-sm btn-light-primary" :disabled="!canEditActive" @@click="pickImage">+ 이미지</button>
                             <button class="btn btn-sm btn-light-primary" :disabled="!canEditActive" @@click="addBlock('TABLE')">+ 표</button>
-                            <button class="btn btn-sm btn-primary" :disabled="!canEditActive || !dirtyCount" @@click="saveActiveBlocks">
-                                저장<span v-if="dirtyCount"> ({{ dirtyCount }})</span>
-                            </button>
+                            <button class="btn btn-sm btn-primary" :disabled="!canEditActive" @@click="saveActiveBlocks">저장</button>
                         </div>
                     </div>
 

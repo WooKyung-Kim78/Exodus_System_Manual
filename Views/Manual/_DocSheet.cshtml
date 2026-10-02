@@ -6,6 +6,12 @@
 <div class="preview-stage" style="--doc-font:@Model.BodyFontStack; --doc-font-size:@(Model.BodyFontSize)pt; --doc-line-height:@Model.BodyLineHeight; --doc-letter-spacing:@(Model.BodyLetterSpacing)px;">
     <div class="doc-sheet @sheetClass" id="docSheet" data-filename="@Model.FileName" data-version="@h.DOC_VERSION">
 
+        @if (Model.IsOem)
+        {
+            <div class="doc-oem-title">@h.MODEL_NAME Manual Data</div>
+        }
+        else
+        {
         <!-- 표지 -->
         <div class="doc-cover avoid-break">
             @if (!string.IsNullOrWhiteSpace(Model.CoverLogoPath))
@@ -39,11 +45,15 @@
                 @((h.PUBLISH_DATE ?? h.REG_DT).ToString("yyyy-MM-dd"))
             </div>
         </div>
+        }
 
         @if (Model.Sections.Count > 0)
         {
             // 페이지 나눔과 대제목의 새 페이지가 겹치면 빈 페이지가 생기므로 다음 내용 앞에서 한 번만 끊는다.
-            var pendingBreak = false;
+            // OEM 은 첫 장에 제목만 두고 본문을 다음 장부터 시작한다.
+            var pendingBreak = Model.IsOem;
+            if (!Model.IsOem)
+            {
             <!-- 목차 -->
             <div class="page-break"></div>
             <div class="doc-toc">
@@ -74,6 +84,7 @@
                     }
                 }
             </div>
+            }
 
             <!-- 본문 -->
             @foreach (var s in Model.Sections)

@@ -226,10 +226,6 @@ new Vue({
                 .filter(function (b) { return b.SEC_ID === self.activeSecId; })
                 .sort(function (a, b) { return a.ORDER_NUM - b.ORDER_NUM; });
         },
-        dirtyCount: function () {
-            var self = this;
-            return this.activeBlocks.filter(function (b) { return self.dirty[b.ELE_ID]; }).length;
-        },
         hasDirty: function () {
             var self = this;
             return Object.keys(this.dirty).some(function (id) { return self.dirty[id]; });
@@ -785,7 +781,8 @@ new Vue({
         saveActiveBlocks: function () {
             var self = this;
             var targets = self.activeBlocks.filter(function (b) { return self.dirty[b.ELE_ID]; });
-            if (!targets.length) return;
+            if (!targets.length) targets = self.activeBlocks;
+            if (!targets.length) { toastOk('저장할 내용이 없습니다.'); return; }
 
             $.when.apply($, targets.map(function (b) { return self.saveBlock(b); }))
                 .done(function () { toastOk('본문을 저장했습니다.'); });

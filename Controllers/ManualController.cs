@@ -90,10 +90,13 @@ public class ManualController : BaseController<ManualController>
         try
         {
             // 1차로 제목이 찍힌 쪽을 알아낸 뒤 목차에 쪽 번호를 채워 다시 만든다. 목차 폭이 고정이라 쪽 배치는 바뀌지 않는다.
-            model.EmitTocMarks = true;
-            var draft = await RenderPdfAsync(model, ct);
-            model.TocPages = PdfTocMarks.Read(draft);
-            model.EmitTocMarks = false;
+            if (!model.IsOem)
+            {
+                model.EmitTocMarks = true;
+                var draft = await RenderPdfAsync(model, ct);
+                model.TocPages = PdfTocMarks.Read(draft);
+                model.EmitTocMarks = false;
+            }
             pdf = await RenderPdfAsync(model, ct);
         }
         catch (PlaywrightException ex)
@@ -117,7 +120,7 @@ public class ManualController : BaseController<ManualController>
             PrintBackground = true,
             DisplayHeaderFooter = true,
             HeaderTemplate = "<span></span>",
-            FooterTemplate = BuildPdfFooter(model.Header.DOC_VERSION),
+            FooterTemplate = model.IsOem ? BuildOemPdfFooter(model.OemFooterText) : BuildPdfFooter(model.Header.DOC_VERSION),
             Margin = new Margin { Top = "20mm", Right = "20mm", Bottom = "18mm", Left = "20mm" },
         }, ct);
     }
@@ -162,6 +165,7 @@ public class ManualController : BaseController<ManualController>
             CoverTitle1 = cover.GetValueOrDefault("TITLE_LINE1", string.Empty),
             CoverTitle2 = cover.GetValueOrDefault("TITLE_LINE2", string.Empty),
             CoverLogoPath = cover.GetValueOrDefault("LOGO_PATH"),
+            OemFooterText = cover.GetValueOrDefault("OEM_FOOTER", string.Empty),
         };
     }
 
@@ -173,6 +177,15 @@ public class ManualController : BaseController<ManualController>
              + "font-family:Helvetica,Arial,sans-serif;font-size:9pt;color:#464646;"
              + "letter-spacing:0.35mm;white-space:pre;\">"
              + "<span class=\"pageNumber\" style=\"font-weight:700;\"></span>" + tail
+             + "</div>";
+    }
+
+    // OEM 꼬리말은 공통 코드 COVER/OEM_FOOTER 문구만 가운데에 찍는다.
+    private static string BuildOemPdfFooter(string text)
+    {
+        return "<div style=\"width:100%;box-sizing:border-box;padding:0 20mm;margin-bottom:5mm;text-align:center;"
+             + "font-family:Helvetica,Arial,sans-serif;font-size:9pt;color:#464646;letter-spacing:0.35mm;\">"
+             + WebUtility.HtmlEncode(text)
              + "</div>";
     }
 
@@ -416,7 +429,7 @@ public class ManualController : BaseController<ManualController>
 
     /* ================= 조회용 ================= */
 
-    /// Job Number 선택 목록. exodus_datasheet 에서 발행된 datasheet 의 NAME 을 쓴다.
+    /// Model Name 선택 목록. exodus_datasheet 에서 발행된 datasheet 의 NAME 을 쓴다.
     [AjaxAuth]
     [HttpGet("datasheets")]
     [Produces("application/json")]
@@ -514,8 +527,7 @@ public class ManualController : BaseController<ManualController>
 
     /* ---------- datasheet 사양 → SPECIFICATIONS 목차 ---------- */
 
-    /// 저장된 PROCESS_ID 로 datasheet 의 category(머리말·꼬리말)와 parameter 를 읽어 HTML 로 만든다.
-    /// PROCESS_ID 가 없는 예전 문서는 Job Number 로 한 번 더 찾아본다.
+    /// 저장된 PROCESS_ID(= TB_DS_DOCUMENT.D_ID) 로 datasheet 의 category(머리말·꼬리말)와 parameter 를 읽어 HTML 로 만든다.
     private (string? html, string message) LoadSpecHtml(ManualHeader header)
     {
         var (spec, message) = LoadSpec(header);
@@ -524,22 +536,22 @@ public class ManualController : BaseController<ManualController>
 
     private (DatasheetSpecResult? spec, string message) LoadSpec(ManualHeader header)
     {
-        if (string.IsNullOrWhiteSpace(header.PROCESS_ID) && string.IsNullOrWhiteSpace(header.JOB_NUMBER))
-            return (null, "Job Number 를 먼저 선택하세요.");
+        if (string.IsNullOrWhiteSpace(header.PROCESS_ID))
+            return (null, "Model Name 을 datasheet 목록에서 선택하세요.");
 
         DatasheetSpecResult? spec;
         try
         {
-            spec = _datasheet.GetSpecById(header.PROCESS_ID) ?? _datasheet.GetSpecByName(header.JOB_NUMBER);
+            spec = _datasheet.GetSpecById(header.PROCESS_ID);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "datasheet 사양을 불러오지 못했습니다. ({MID}, {JOB})", header.M_ID, header.JOB_NUMBER);
+            _logger.LogError(ex, "datasheet 사양을 불러오지 못했습니다. ({MID}, {MODEL})", header.M_ID, header.MODEL_NAME);
             return (null, "Datasheet 시스템에 연결하지 못했습니다.");
         }
 
         if (spec is null || spec.Categories.Count == 0)
-            return (null, $"'{header.JOB_NUMBER}' datasheet 에서 가져올 사양이 없습니다.");
+            return (null, $"'{header.MODEL_NAME}' datasheet 에서 가져올 사양이 없습니다.");
 
         var rows = spec.Categories.Sum(c => c.ROWS.Count);
         return (spec, $"'{spec.Datasheet.NAME}' 사양 {spec.Categories.Count}개 항목 · {rows}개 파라미터");

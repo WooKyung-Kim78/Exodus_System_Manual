@@ -314,6 +314,13 @@ new Vue({
                 .fail(function (xhr) { toastError(getErrorMessage(xhr)); })
                 .always(function () { self.addingTpl = null; });
         },
+        // 모달을 겹쳐 띄우면 배경·포커스가 꼬이므로 목차관리 모달이 닫힌 뒤에 연다.
+        addDirectSection: function () {
+            var self = this;
+            var el = document.getElementById('templateModal');
+            el.addEventListener('hidden.bs.modal', function () { self.openSection(null); }, { once: true });
+            self.modal('templateModal').hide();
+        },
         // 템플릿에 없어도 바로 넣는다. 맨 뒤에 붙고 ↑↓ 로 자리를 정한다.
         addPageBreak: function () {
             var self = this;

@@ -41,16 +41,16 @@
                     <div class="card-body">
                         <div class="mb-4">
                             <label class="form-label required">Model Name</label>
-                            <input type="text" class="form-control" v-model.trim="header.MODEL_NAME" :disabled="!canEdit" maxlength="100" />
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label">Job Number</label>
-                            <datasheet-select v-model="header.JOB_NUMBER" :disabled="!canEdit" @@select="pickDatasheet"></datasheet-select>
+                            <datasheet-select v-model="header.MODEL_NAME" allow-free :disabled="!canEdit" @@select="pickDatasheet"></datasheet-select>
                             <button class="btn btn-sm btn-light-primary w-100 mt-2"
-                                    :disabled="specLoading || !header.JOB_NUMBER" @@click="openSpec">
+                                    :disabled="specLoading || !header.MODEL_NAME" @@click="openSpec">
                                 {{ specLoading ? '불러오는 중...' : 'SPECIFICATIONS 보기' }}
                             </button>
                             <div class="form-text">Datasheet 의 category·parameter 를 볼 때마다 읽어 SPECIFICATIONS 목차와 PDF 에 그립니다.</div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Job Number</label>
+                            <input type="text" class="form-control" v-model.trim="header.JOB_NUMBER" :disabled="!canEdit" maxlength="50" />
                         </div>
                         <div class="mb-4">
                             <label class="form-label">Label</label>
@@ -88,6 +88,7 @@
                             {{ savingHeader ? '저장 중...' : '기본 정보 저장' }}
                         </button>
 
+                        <template v-if="header.LABEL !== 'OEM'">
                         <div class="separator my-6"></div>
 
                         <label class="form-label">표지 이미지</label>
@@ -104,6 +105,7 @@
                             <button class="btn btn-light-danger" :disabled="!canEdit || !header.COVER_IMAGE_PATH"
                                     @@click="removeCover">삭제</button>
                         </div>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -120,7 +122,7 @@
                     </div>
                     <div class="card-body">
                         <div v-if="!sections.length" class="text-center text-muted py-10">
-                            <!-- 목차가 없습니다. 템플릿에서 가져오거나 직접 추가하세요. -->
+                            목차가 없습니다. [목차관리]에서 직접 추가하거나 템플릿에서 가져오세요.
                         </div>
                         <table v-else class="table table-row-bordered align-middle gy-2">
                             <thead>
@@ -354,7 +356,9 @@
                             <div class="text-muted fs-8">
                                 이 문서의 Label·Cooling 에 맞는 항목입니다. 지운 목차는 여기서 다시 추가할 수 있습니다.
                             </div>
-                            <button class="btn btn-sm btn-light-info py-1 px-3 ms-auto text-nowrap"
+                            <button class="btn btn-sm btn-primary py-1 px-3 ms-auto text-nowrap"
+                                    :disabled="!canEdit" @@click="addDirectSection">+ 목차 직접 추가</button>
+                            <button class="btn btn-sm btn-light-info py-1 px-3 text-nowrap"
                                     :disabled="!canEdit || addingPageBreak" @@click="addPageBreak">+ 페이지 나눔</button>
                         </div>
 
@@ -457,7 +461,7 @@
             <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">SPECIFICATIONS <span class="text-muted fs-7 ms-2">{{ header.JOB_NUMBER }}</span></h5>
+                        <h5 class="modal-title">SPECIFICATIONS <span class="text-muted fs-7 ms-2">{{ header.MODEL_NAME }}</span></h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">

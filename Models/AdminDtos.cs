@@ -54,7 +54,8 @@ public class InputSectionTemplate
 {
     public long? TPL_ID { get; set; }
 
-    [RegularExpression("^(EXODUS|OEM)?$", ErrorMessage = "Label 값이 올바르지 않습니다.")]
+    [Required(ErrorMessage = "Label 을 선택하세요.")]
+    [RegularExpression("^(EXODUS|OEM)$", ErrorMessage = "Label 값이 올바르지 않습니다.")]
     public string? LABEL { get; set; }
 
     [RegularExpression("^(AIR|LIQUID)?$", ErrorMessage = "Cooling 값이 올바르지 않습니다.")]

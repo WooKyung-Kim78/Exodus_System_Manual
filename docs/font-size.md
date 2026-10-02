@@ -17,6 +17,7 @@
 | 표지 | 제목 문구 | 14pt | `--doc-size-cover` |
 | 표지 | 문서번호 · Rev · 날짜 | 10pt | `--doc-size-small` |
 | 목차 | "Table of Contents" | 12pt | `--doc-size-toc-title` |
+| OEM | 첫 장 "<Model> Manual Data" | 20pt | `--doc-size-oem-title` |
 | 목차 | 목차 줄 | 본문과 같음 (12pt) | `--doc-font-size` 상속 |
 | 사양표 | category 이름 | 10pt | `--ds-size-category` |
 | 사양표 | category 옆 머리말 · 표 아래 꼬리말 | 9pt | `--ds-size-note` |

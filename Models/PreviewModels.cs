@@ -108,6 +108,10 @@ public class PreviewViewModel
     public string CoverTitle2 { get; set; } = string.Empty;
     public string? CoverLogoPath { get; set; }
 
+    /// OEM 문서는 표지·목차 페이지 없이 첫 장 상단에 "<Model> Manual Data" 만 찍는다.
+    public bool IsOem => Header.LABEL == "OEM";
+    public string OemFooterText { get; set; } = string.Empty;
+
     /// 인쇄 영역 폭(mm). Letter 216 / A4 210 에서 좌우 여백을 뺀 값.
     public int ContentWidthMm => Header.PAGE_SIZE == "A4" ? 170 : 176;
     public string BodyFontStack => BodyFonts.StackOf(Header.BODY_FONT);

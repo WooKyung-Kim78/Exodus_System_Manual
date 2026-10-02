@@ -20,7 +20,6 @@
                 <div class="col-auto">
                     <label class="form-label fs-8">Label</label>
                     <select class="form-select form-select-sm" v-model="filter.label" @@change="callList">
-                        <option value="">전체</option>
                         <option value="EXODUS">Exodus</option>
                         <option value="OEM">OEM</option>
                     </select>
@@ -127,9 +126,8 @@
 
                             <div class="row g-4 mb-4">
                                 <div class="col-6">
-                                    <label class="form-label">Label</label>
+                                    <label class="form-label required">Label</label>
                                     <select class="form-select" v-model="form.LABEL">
-                                        <option value="">전체 공통</option>
                                         <option value="EXODUS">Exodus</option>
                                         <option value="OEM">OEM</option>
                                     </select>

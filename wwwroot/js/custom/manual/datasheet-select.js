@@ -1,5 +1,6 @@
-/* Job Number 선택용 검색 가능한 셀렉트.
-   exodus_datasheet 에서 발행된 datasheet 의 NAME 목록을 불러와 고르게 한다. */
+/* Model Name 선택용 검색 가능한 셀렉트.
+   exodus_datasheet 에서 발행된 datasheet 의 NAME 목록을 불러와 고르게 한다.
+   allowFree 면 목록에 없는 값도 직접 입력할 수 있다(이때는 datasheet 연결이 풀린다). */
 (function () {
     var cache = null;
     var pending = null;
@@ -23,7 +24,8 @@
         props: {
             value: { type: String, default: '' },
             disabled: { type: Boolean, default: false },
-            placeholder: { type: String, default: 'Job Number 검색 (datasheet)' },
+            allowFree: { type: Boolean, default: false },
+            placeholder: { type: String, default: 'Model Name 검색 (datasheet)' },
         },
         data: function () {
             return { list: [], keyword: '', open: false, loading: false, error: '' };
@@ -43,13 +45,17 @@
         methods: {
             onFocus: function () {
                 if (this.disabled) return;
-                this.keyword = '';
+                this.keyword = this.allowFree ? (this.value || '') : '';
                 this.open = true;
                 this.load();
             },
             onInput: function (e) {
                 this.keyword = e.target.value;
                 this.open = true;
+                if (this.allowFree) {
+                    this.$emit('input', this.keyword.trim());
+                    this.$emit('select', null);
+                }
             },
             // 목록 항목 클릭은 mousedown 에서 처리하므로 blur 를 조금 늦춘다.
             onBlur: function () {

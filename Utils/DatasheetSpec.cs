@@ -68,17 +68,6 @@ public class DatasheetSpec
         return BuildResult(option);
     }
 
-    /// NAME(= Job Number) 으로 datasheet 사양을 가져온다. PROCESS_ID 가 없는 예전 문서용.
-    public DatasheetSpecResult? GetSpecByName(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return null;
-
-        var option = GetPublishedOptions()
-            .FirstOrDefault(o => string.Equals(o.NAME, name.Trim(), StringComparison.OrdinalIgnoreCase));
-
-        return option is null ? null : BuildResult(option);
-    }
-
     /// datasheet 프리뷰(workspace/preview.js)와 같은 규칙으로 category → 파라미터 → 밴드별 셀을 묶는다.
     private DatasheetSpecResult BuildResult(DatasheetOption option)
     {

@@ -70,12 +70,12 @@
 
                     <div class="mb-4">
                         <label class="form-label required">Model Name</label>
-                        <input type="text" class="form-control" v-model.trim="form.MODEL_NAME" maxlength="100" />
+                        <datasheet-select v-model="form.MODEL_NAME" allow-free @@select="pickDatasheet"></datasheet-select>
+                        <div class="form-text">Datasheet 를 고르면 SPECIFICATIONS 목차에 사양이 자동으로 보입니다.</div>
                     </div>
                     <div class="mb-4">
                         <label class="form-label">Job Number</label>
-                        <datasheet-select v-model="form.JOB_NUMBER" @@select="pickDatasheet"></datasheet-select>
-                        <div class="form-text">Datasheet 를 고르면 SPECIFICATIONS 목차에 사양이 자동으로 보입니다.</div>
+                        <input type="text" class="form-control" v-model.trim="form.JOB_NUMBER" maxlength="50" />
                     </div>
                     <div class="mb-4">
                         <label class="form-label">Label</label>
@@ -92,7 +92,7 @@
                             <option value="AIR">Air</option>
                             <option value="LIQUID">Liquid</option>
                         </select>
-                        <div class="form-text">Label·Cooling 에 맞는 필수 목차가 자동으로 들어갑니다.</div>
+                        <div class="form-text">Label·Cooling 에 맞는 필수 목차가 자동으로 들어갑니다. (OEM 은 제외 — 목차를 직접 추가)</div>
                     </div>
                     <div class="mb-4">
                         <label class="form-label">Option</label>
@@ -101,7 +101,7 @@
                     <div class="mb-4">
                         <label class="form-label">Version</label>
                         <input type="text" class="form-control" v-model.trim="form.DOC_VERSION" maxlength="20" placeholder="1.0" />
-                        <div class="form-text">PDF 아래쪽에 "1 | Page - Ver. 1.0" 형식으로 찍힙니다.</div>
+                        <div class="form-text">PDF 아래쪽에 "1 | Page - Ver. 1.0" 형식으로 찍힙니다. (OEM 은 표시 안 함)</div>
                     </div>
                     <div>
                         <label class="form-label">Page Size</label>
