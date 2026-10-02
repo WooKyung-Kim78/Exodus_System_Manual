@@ -53,7 +53,7 @@ button.inline.danger { border-color:#f2c5c1; background:var(--ex-color-danger-su
 button.inline.danger:hover:not(:disabled) { border-color:#eaa19b; background:#fee4e2; color:var(--ex-color-danger-hover); }
 button.inline.action-info { border-color:#bfd8e5; background:var(--ex-color-info-subtle); color:var(--ex-color-info); }
 button.inline.action-warning { border-color:#ead49c; background:var(--ex-color-warning-subtle); color:var(--ex-color-warning); }
-button.inline.action-move { border-color:#d9e2e7; background:#f7fafb; color:#526b7b; }
+button.inline.action-move { width:2rem; min-width:2rem; border-color:#d9e2e7; background:#f7fafb; color:#526b7b; padding:0; }
 button.inline.action-edit { border-color:#bfd8e5; background:var(--ex-color-info-subtle); color:var(--ex-color-info); }
 
 .sidebar-account { display:grid; gap:var(--ex-space-3); margin-top:auto; border:1px solid rgb(213 224 232 / .18); border-radius:var(--ex-radius); background:rgb(255 255 255 / .06); padding:var(--ex-space-3); }.sidebar-profile { display:flex; align-items:center; gap:var(--ex-space-3); min-width:0; }.sidebar-profile .avatar { flex:0 0 auto; width:2.5rem; height:2.5rem; background:#7c6ee6; color:#fff; }.sidebar-profile .user-meta { min-width:0; color:#fff; }.sidebar-profile .user-meta small { overflow:hidden; color:var(--ex-sidebar-muted); text-overflow:ellipsis; white-space:nowrap; }.sidebar-signout { width:100%; min-height:2.25rem; border:0; border-radius:var(--ex-radius-xs); background:rgb(255 255 255 / .08); color:#d5e0e8; padding:.45rem .625rem; font-size:.8125rem; }.sidebar-signout:hover:not(:disabled) { background:rgb(181 74 83 / .28); color:#fff; }.mobile-nav-bar,.nav-backdrop,.sidebar-close, .mobile-nav-toggle { display:none; }

@@ -67,8 +67,8 @@ onBeforeUnmount(releasePdf)
   <section class="preview">
     <nav class="preview-toolbar" aria-label="미리보기 도구">
       <div class="preview-toolbar-main">
-        <RouterLink class="secondary" :to="{ path: '/editor', query: { mid } }">← 편집기</RouterLink>
-        <RouterLink class="secondary" :to="{ path: '/manual/detail', query: { mid } }">문서 정보</RouterLink>
+        <RouterLink class="button secondary" :to="{ path: '/editor', query: { mid } }">← 편집기</RouterLink>
+        <RouterLink class="button secondary" :to="{ path: '/manual/detail', query: { mid } }">문서 정보</RouterLink>
         <div class="button-group" role="group" aria-label="보기 방식">
           <button class="secondary" :class="{ active: !pageMode }" type="button" @click="showFlow">연속 보기</button
           ><button
@@ -104,9 +104,11 @@ onBeforeUnmount(releasePdf)
   justify-content: space-between;
   gap: var(--ex-space-3);
   margin-bottom: var(--ex-space-4);
-  border-bottom: 1px solid var(--ex-color-border);
+  border: 1px solid var(--ex-color-border);
+  border-radius: var(--ex-radius);
   background: var(--ex-color-surface);
-  padding: var(--ex-space-3);
+  padding: var(--ex-space-3) var(--ex-space-4);
+  box-shadow: var(--ex-shadow);
 }
 .preview-toolbar-main,
 .preview-toolbar-actions {

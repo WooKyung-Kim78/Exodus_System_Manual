@@ -819,11 +819,16 @@ onMounted(async () => {
   grid-column: 1 / -1;
 }
 .document-style-preview {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
   border-radius: var(--ex-radius-sm);
   background: #f2f5f7;
   padding: var(--ex-space-3);
   color: var(--ex-color-text);
   font-size: 0.875rem;
+  white-space: nowrap;
 }
 .document-style-section .field-help {
   margin: -0.3rem 0 0;

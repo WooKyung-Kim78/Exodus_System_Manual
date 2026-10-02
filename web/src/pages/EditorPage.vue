@@ -621,10 +621,14 @@ onMounted(async () => {
               <header>
                 <span>{{ block.ELE_TYPE === 'TEXT' ? '텍스트' : block.ELE_TYPE === 'IMAGE' ? '이미지' : '표' }}</span>
                 <div>
-                  <button class="inline" :disabled="!canEditActive || index === 0" @click="moveBlock(index, -1)">
+                  <button
+                    class="inline action-move"
+                    :disabled="!canEditActive || index === 0"
+                    @click="moveBlock(index, -1)"
+                  >
                     ↑</button
                   ><button
-                    class="inline"
+                    class="inline action-move"
                     :disabled="!canEditActive || index === activeBlocks.length - 1"
                     @click="moveBlock(index, 1)"
                   >
