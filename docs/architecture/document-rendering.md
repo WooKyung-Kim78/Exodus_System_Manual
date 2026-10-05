@@ -12,6 +12,7 @@ ManualController.BuildPreviewModel(mid) ─▶ PreviewViewModel  (헤더+목차+
 - 미리보기와 PDF 는 **`DocumentHtmlBuilder`가 만든 같은 HTML 문자열**을 사용한다. 동적 헤더·목차·본문 값은 빌더에서 HTML 인코딩하고, 본문·사양 HTML은 기존처럼 `HtmlSanitize.Clean`을 거쳐 넣는다. Preview/PDF 각각에 조건 분기를 넣지 않는다.
 - `preview.css` 의 `@page` 여백과 `ManualController.RenderPdfAsync` 의 Playwright 여백 옵션은 **같아야 한다** (코드 주석 참고). 한쪽만 바꾸면 미리보기와 PDF 의 쪽 나눔이 달라진다.
 - 페이지 크기: Letter(기본) / A4 — `TB_S_MANUAL.PAGE_SIZE`.
+- OEM 문서는 표지·목차 대신 첫 페이지에 `<Model Name> Manual Data`를 표시하며, `COVER/OEM_FOOTER` 공통 코드 문구를 PDF 꼬리말로 쓴다. OEM에는 목차가 없으므로 PDF 목차 쪽 번호용 1차 렌더를 생략한다.
 
 ## PDF 목차 쪽 번호 (2-pass)
 

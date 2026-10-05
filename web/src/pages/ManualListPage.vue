@@ -183,15 +183,11 @@ onMounted(load)
       <p v-if="newError" class="error">{{ newError }}</p>
       <label
         ><span class="field-label">Model Name<strong>*</strong></span
-        ><input v-model.trim="newManual.MODEL_NAME" maxlength="100" required
-      /></label>
-      <label
-        >Job Number<DatasheetSelect
-          v-model="newManual.JOB_NUMBER"
-          :options="datasheets"
-          @select="pickDatasheet"
-        /><small>Datasheet 를 고르면 SPECIFICATIONS 목차에 사양이 자동으로 보입니다.</small></label
+        ><DatasheetSelect v-model="newManual.MODEL_NAME" :options="datasheets" @select="pickDatasheet" /><small
+          >Datasheet 를 고르면 SPECIFICATIONS 목차에 사양이 자동으로 보입니다.</small
+        ></label
       >
+      <label>Job Number<input v-model.trim="newManual.JOB_NUMBER" maxlength="50" /></label>
       <label
         >Label<select v-model="newManual.LABEL">
           <option value="">선택 안 함</option>

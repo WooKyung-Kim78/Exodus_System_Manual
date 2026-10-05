@@ -27,15 +27,18 @@ public static class DocumentHtmlBuilder
             .Append("\" id=\"docSheet\" data-filename=\"").Append(A(model.FileName))
             .Append("\" data-version=\"").Append(A(h.DOC_VERSION)).Append("\">");
 
-        Cover(html, model);
+        if (model.IsOem)
+            html.Append("<div class=\"doc-oem-title\">").Append(E(h.MODEL_NAME)).Append(" Manual Data</div>");
+        else
+            Cover(html, model);
         if (model.Sections.Count == 0)
         {
             html.Append("<div class=\"page-break\"></div><p class=\"text-center text-muted\">작성된 목차가 없습니다.</p>");
         }
         else
         {
-            Toc(html, model);
-            Sections(html, model);
+            if (!model.IsOem) Toc(html, model);
+            Sections(html, model, model.IsOem);
         }
 
         return html.Append("</div></div></body></html>").ToString();
@@ -84,9 +87,9 @@ public static class DocumentHtmlBuilder
             .Append(E(page)).Append("</span></a>");
     }
 
-    private static void Sections(StringBuilder html, PreviewViewModel model)
+    private static void Sections(StringBuilder html, PreviewViewModel model, bool startOnNewPage)
     {
-        var pendingBreak = false;
+        var pendingBreak = startOnNewPage;
         foreach (var s in model.Sections)
         {
             if (s.SEC_TYPE == "PAGEBREAK") { pendingBreak = true; continue; }

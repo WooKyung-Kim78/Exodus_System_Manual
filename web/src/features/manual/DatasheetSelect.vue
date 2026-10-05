@@ -5,7 +5,7 @@ import type { DatasheetOption } from '../../api/types'
 
 const props = withDefaults(defineProps<{ options: DatasheetOption[]; disabled?: boolean; placeholder?: string }>(), {
   disabled: false,
-  placeholder: 'Job Number 검색 (datasheet)',
+  placeholder: 'Model Name 검색 (datasheet)',
 })
 const modelValue = defineModel<string>({ default: '' })
 const emit = defineEmits<{ select: [item: DatasheetOption | null] }>()
@@ -65,7 +65,7 @@ function clear() {
         @blur="blur"
         @keydown.esc="open = false"
       />
-      <button v-if="!disabled" type="button" aria-label="Job Number 지우기" title="지우기" @mousedown.prevent="clear">
+      <button v-if="!disabled" type="button" aria-label="Model Name 지우기" title="지우기" @mousedown.prevent="clear">
         <AppIcon name="close" />
       </button>
     </div>

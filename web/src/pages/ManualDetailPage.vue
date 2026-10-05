@@ -459,19 +459,17 @@ onMounted(async () => {
           <div class="admin-card-content manual-info-fields">
             <label
               ><span class="field-label">Model Name <strong aria-hidden="true">*</strong></span
-              ><input v-model="form.MODEL_NAME" :readonly="!canEdit" required
-            /></label>
-            <label
-              >Job Number<DatasheetSelect
-                v-model="form.JOB_NUMBER"
+              ><DatasheetSelect
+                v-model="form.MODEL_NAME"
                 :options="datasheets"
                 :disabled="!canEdit"
                 @select="pickDatasheet"
             /></label>
+            <label>Job Number<input v-model="form.JOB_NUMBER" :readonly="!canEdit" maxlength="50" /></label>
             <button
               class="secondary form-submit"
               type="button"
-              :disabled="specLoading || !form.JOB_NUMBER"
+              :disabled="specLoading || !form.PROCESS_ID"
               @click="openSpec"
             >
               {{ specLoading ? '불러오는 중…' : 'SPECIFICATIONS 보기' }}
@@ -605,7 +603,7 @@ onMounted(async () => {
         </section>
       </div>
     </template>
-    <AppDialog v-model:open="specOpen" :title="specTitle" :title-detail="form?.JOB_NUMBER" wide
+    <AppDialog v-model:open="specOpen" :title="specTitle" :title-detail="form?.MODEL_NAME" wide
       ><p v-if="specLoading">불러오는 중…</p>
       <template v-else
         ><p v-if="specMessage" class="spec-message">{{ specMessage }}</p>

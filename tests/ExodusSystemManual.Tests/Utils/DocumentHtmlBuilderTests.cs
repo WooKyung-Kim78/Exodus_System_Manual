@@ -42,4 +42,21 @@ public class DocumentHtmlBuilderTests
         Assert.Contains("id=\"sec-3\"", html);
         Assert.True(html.LastIndexOf("page-break", StringComparison.Ordinal) < html.IndexOf("id=\"sec-3\"", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Build_oem_document_omits_cover_and_toc_but_starts_sections_on_next_page()
+    {
+        var model = new PreviewViewModel
+        {
+            Header = new ManualHeader { M_ID = "M1", MODEL_NAME = "OEM-100", LABEL = "OEM", REVISION = "1", STATUS = "DRAFT", PAGE_SIZE = "LETTER", REQUESTER_ID = "user", REG_DT = DateTime.Today },
+            Sections = new List<SectionItem> { new() { SEC_ID = 1, M_ID = "M1", TITLE = "본문", SEC_STATUS = "EMPTY" } },
+        };
+
+        var html = DocumentHtmlBuilder.Build(model);
+
+        Assert.Contains("OEM-100 Manual Data", html);
+        Assert.DoesNotContain("doc-cover", html);
+        Assert.DoesNotContain("Table of Contents", html);
+        Assert.True(html.IndexOf("page-break", StringComparison.Ordinal) < html.IndexOf("id=\"sec-1\"", StringComparison.Ordinal));
+    }
 }

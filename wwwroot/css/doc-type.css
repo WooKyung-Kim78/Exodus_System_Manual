@@ -10,6 +10,7 @@
     /* 표지 · 목차 */
     --doc-size-cover: 14pt;
     --doc-size-toc-title: 12pt;
+    --doc-size-oem-title: 20pt;  /* OEM 첫 장 "<Model> Manual Data" */
 
     /* SPECIFICATIONS 사양표 — datasheet 원본 px × 0.8 */
     --ds-size-body: 11pt;
