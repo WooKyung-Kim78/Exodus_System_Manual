@@ -29,7 +29,7 @@ interface Template {
 type TemplateInput = Omit<Template, 'TPL_ID'> & { TPL_ID?: number }
 const list = ref<Template[]>([])
 const teams = ref<TeamOption[]>([])
-const label = ref('')
+const label = ref('EXODUS')
 const cooling = ref('')
 const form = ref<TemplateInput | null>(null)
 const error = ref('')
@@ -254,7 +254,6 @@ onMounted(() => {
             <div class="template-form-grid">
               <label
                 >Label<select v-model="form.LABEL">
-                  <option value="">전체 공통</option>
                   <option value="EXODUS">Exodus</option>
                   <option value="OEM">OEM</option>
                 </select></label

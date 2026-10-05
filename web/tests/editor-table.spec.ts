@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeTable, toTableHtml } from '../src/features/editor/table'
+import { normalizeTable, renumberTable, toTableHtml } from '../src/features/editor/table'
 
 describe('table block helpers', () => {
   it('normalizes malformed table data into an editable grid', () => {
@@ -37,5 +37,20 @@ describe('table block helpers', () => {
     })
     expect(html).toContain('&lt;title&gt;')
     expect(html).toContain('<p><strong>formatted</strong></p>')
+  })
+
+  it('renumbers a No. column after rows change', () => {
+    const table = normalizeTable(
+      JSON.stringify({
+        head: ['No.', 'Title'],
+        rows: [
+          ['9', 'first'],
+          ['3', 'second'],
+        ],
+      }),
+    )
+    table.rows.splice(0, 1)
+    renumberTable(table)
+    expect(table.rows).toEqual([['1', 'second']])
   })
 })

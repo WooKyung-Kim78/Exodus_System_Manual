@@ -23,6 +23,15 @@ export function newTable(): TableState {
   }
 }
 
+export function tableNoColumn(table: TableState): number {
+  return table.head.findIndex((name) => ['NO', 'NO.'].includes(name.trim().toUpperCase()))
+}
+
+export function renumberTable(table: TableState) {
+  const column = tableNoColumn(table)
+  if (column >= 0) table.rows.forEach((row, index) => (row[column] = String(index + 1)))
+}
+
 export function normalizeTable(json?: string): TableState {
   let value: unknown
   try {
@@ -43,7 +52,7 @@ export function normalizeTable(json?: string): TableState {
   const rows = Array.isArray(source.rows)
     ? source.rows.map((row) => head.map((_, index) => text(Array.isArray(row) ? row[index] : undefined)))
     : []
-  return {
+  const table = {
     head,
     align: head.map((_, index) => {
       const align = source.align?.[index]
@@ -55,6 +64,8 @@ export function normalizeTable(json?: string): TableState {
     ),
     rows: rows.length ? rows : [head.map(() => '')],
   }
+  renumberTable(table)
+  return table
 }
 
 function cellHtml(value: string): string {

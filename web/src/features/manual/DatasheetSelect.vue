@@ -3,10 +3,14 @@ import { computed, ref } from 'vue'
 import AppIcon from '../../design-system/AppIcon.vue'
 import type { DatasheetOption } from '../../api/types'
 
-const props = withDefaults(defineProps<{ options: DatasheetOption[]; disabled?: boolean; placeholder?: string }>(), {
-  disabled: false,
-  placeholder: 'Model Name 검색 (datasheet)',
-})
+const props = withDefaults(
+  defineProps<{ options: DatasheetOption[]; disabled?: boolean; allowFree?: boolean; placeholder?: string }>(),
+  {
+    disabled: false,
+    allowFree: false,
+    placeholder: 'Model Name 검색 (datasheet)',
+  },
+)
 const modelValue = defineModel<string>({ default: '' })
 const emit = defineEmits<{ select: [item: DatasheetOption | null] }>()
 const keyword = ref('')
@@ -22,13 +26,17 @@ const filtered = computed(() => {
 
 function focus() {
   if (!props.disabled) {
-    keyword.value = ''
+    keyword.value = props.allowFree ? modelValue.value : ''
     open.value = true
   }
 }
 function input(event: Event) {
   keyword.value = (event.target as HTMLInputElement).value
   open.value = true
+  if (props.allowFree) {
+    modelValue.value = keyword.value.trim()
+    emit('select', null)
+  }
 }
 function blur() {
   window.setTimeout(() => {

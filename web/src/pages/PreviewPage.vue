@@ -40,9 +40,13 @@ async function loadPdf() {
 }
 async function showPages() {
   if (!mid.value) return
-  const url = await loadPdf()
-  if (pageFrame.value) pageFrame.value.src = url
   pageMode.value = true
+  try {
+    const url = await loadPdf()
+    if (pageFrame.value) pageFrame.value.src = url
+  } catch {
+    pageMode.value = false
+  }
 }
 function showFlow() {
   pageMode.value = false
@@ -90,6 +94,7 @@ onBeforeUnmount(releasePdf)
     </nav>
     <iframe v-show="!pageMode && mid" ref="flowFrame" :src="source" title="문서 미리보기" />
     <iframe v-show="pageMode" ref="pageFrame" title="페이지 보기" />
+    <div v-if="pageMode && loadingPdf" class="preview-loading">페이지를 만드는 중입니다…</div>
   </section>
 </template>
 
@@ -132,6 +137,12 @@ onBeforeUnmount(releasePdf)
 }
 .preview-toolbar .pdf-state {
   min-width: 2.5rem;
+}
+.preview-loading {
+  display: grid;
+  min-height: 28rem;
+  place-items: center;
+  color: var(--ex-color-text-muted);
 }
 @media (max-width: 680px) {
   .preview-toolbar {

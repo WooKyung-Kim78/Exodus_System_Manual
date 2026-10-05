@@ -183,9 +183,12 @@ onMounted(load)
       <p v-if="newError" class="error">{{ newError }}</p>
       <label
         ><span class="field-label">Model Name<strong>*</strong></span
-        ><DatasheetSelect v-model="newManual.MODEL_NAME" :options="datasheets" @select="pickDatasheet" /><small
-          >Datasheet 를 고르면 SPECIFICATIONS 목차에 사양이 자동으로 보입니다.</small
-        ></label
+        ><DatasheetSelect
+          v-model="newManual.MODEL_NAME"
+          :options="datasheets"
+          allow-free
+          @select="pickDatasheet"
+        /><small>Datasheet 를 고르면 SPECIFICATIONS 목차에 사양이 자동으로 보입니다.</small></label
       >
       <label>Job Number<input v-model.trim="newManual.JOB_NUMBER" maxlength="50" /></label>
       <label
@@ -200,12 +203,12 @@ onMounted(load)
           <option value="">선택 안 함</option>
           <option value="AIR">Air</option>
           <option value="LIQUID">Liquid</option></select
-        ><small>Label·Cooling 에 맞는 필수 목차가 자동으로 들어갑니다.</small></label
+        ><small>Label·Cooling 에 맞는 필수 목차가 자동으로 들어갑니다. OEM은 목차를 직접 추가합니다.</small></label
       >
       <label>Option<textarea v-model.trim="newManual.OPTION_TEXT" maxlength="500" /></label>
       <label
         >Version<input v-model.trim="newManual.DOC_VERSION" maxlength="20" placeholder="1.0" /><small
-          >PDF 아래쪽에 "1 | Page - Ver. 1.0" 형식으로 찍힙니다.</small
+          >PDF 아래쪽에 "1 | Page - Ver. 1.0" 형식으로 찍힙니다. OEM에는 표시하지 않습니다.</small
         ></label
       >
       <label

@@ -6,7 +6,7 @@ import AppDialog from '../../design-system/AppDialog.vue'
 
 const props = defineProps<{ mid: string; canEdit: boolean }>()
 const open = defineModel<boolean>('open', { required: true })
-const emit = defineEmits<{ changed: [sectionId: number] }>()
+const emit = defineEmits<{ changed: [sectionId: number]; create: [] }>()
 const loading = ref(false)
 const adding = ref<number | 'pagebreak' | null>(null)
 const error = ref('')
@@ -78,6 +78,9 @@ watch(open, (isOpen) => {
         @click="addPageBreak"
       >
         + 페이지 나눔
+      </button>
+      <button class="template-pagebreak-button" type="button" :disabled="!canEdit" @click="emit('create')">
+        + 목차 직접 추가
       </button>
     </div>
     <p v-if="loading">불러오는 중…</p>

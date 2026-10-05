@@ -8,7 +8,14 @@ import AppBadge from '../design-system/AppBadge.vue'
 import ConfirmDialog from '../design-system/ConfirmDialog.vue'
 import { useConfirmDialog } from '../design-system/useConfirmDialog'
 import BlockEditor from '../features/editor/BlockEditor.vue'
-import { newTable, normalizeTable, toTableHtml, type TableState } from '../features/editor/table'
+import {
+  newTable,
+  normalizeTable,
+  renumberTable,
+  tableNoColumn,
+  toTableHtml,
+  type TableState,
+} from '../features/editor/table'
 import { useSessionStore } from '../stores/session'
 import TemplateSectionDialog from '../features/manual/TemplateSectionDialog.vue'
 
@@ -202,6 +209,7 @@ async function save(block: Block) {
   saving.value = block.ELE_ID ?? 'new'
   saveState.value = '저장 중…'
   if (block.ELE_TYPE === 'TABLE' && block.TABLE) {
+    renumberTable(block.TABLE)
     block.STYLE_JSON = JSON.stringify(block.TABLE)
     block.CONTENT_HTML = toTableHtml(block.TABLE)
   }
@@ -251,9 +259,13 @@ function addTable() {
 }
 function addTableRow(block: Block) {
   block.TABLE?.rows.push(block.TABLE.head.map(() => ''))
+  if (block.TABLE) renumberTable(block.TABLE)
 }
 function removeTableRow(block: Block, index: number) {
-  if (block.TABLE && block.TABLE.rows.length > 1) block.TABLE.rows.splice(index, 1)
+  if (block.TABLE && block.TABLE.rows.length > 1) {
+    block.TABLE.rows.splice(index, 1)
+    renumberTable(block.TABLE)
+  }
 }
 function addTableColumn(block: Block) {
   if (!block.TABLE) return
@@ -727,7 +739,12 @@ onMounted(async () => {
                         <tr>
                           <th></th>
                           <th v-for="(_, column) in block.TABLE.head" :key="column">
-                            <input v-model="block.TABLE.head[column]" :readonly="!canEditActive" placeholder="머리글" />
+                            <input
+                              v-model="block.TABLE.head[column]"
+                              :readonly="!canEditActive"
+                              placeholder="머리글"
+                              @input="renumberTable(block.TABLE)"
+                            />
                             <div class="table-column-options">
                               <select v-model="block.TABLE.align[column]" :disabled="!canEditActive">
                                 <option value="left">좌</option>
@@ -764,8 +781,11 @@ onMounted(async () => {
                             </button>
                           </td>
                           <td v-for="(_, column) in row" :key="column">
+                            <span v-if="column === tableNoColumn(block.TABLE)" class="table-auto-number">{{
+                              row[column]
+                            }}</span>
                             <input
-                              v-if="column === tableColumns(block.TABLE).title"
+                              v-else-if="column === tableColumns(block.TABLE).title"
                               v-model="block.TABLE.rows[rowIndex][column]"
                               list="table-title-options"
                               :readonly="!canEditActive"

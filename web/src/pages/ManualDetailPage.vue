@@ -238,6 +238,20 @@ async function openSection(section: ManualSection) {
     sectionLoading.value = false
   }
 }
+function openNewSection() {
+  if (!canEdit.value) return
+  templateOpen.value = false
+  sectionError.value = ''
+  sectionForm.value = {
+    TITLE: '',
+    SEC_LEVEL: 1,
+    TITLE_ALIGN: 'LEFT',
+    SHOW_IN_TOC: 'Y',
+    TITLE_UNDERLINE: 'N',
+    SEC_TYPE: 'NORMAL',
+  }
+  sectionOpen.value = true
+}
 async function saveSection() {
   if (!canEdit.value || !sectionForm.value.TITLE.trim()) {
     sectionError.value = '제목은 필수입니다.'
@@ -463,13 +477,14 @@ onMounted(async () => {
                 v-model="form.MODEL_NAME"
                 :options="datasheets"
                 :disabled="!canEdit"
+                allow-free
                 @select="pickDatasheet"
             /></label>
             <label>Job Number<input v-model="form.JOB_NUMBER" :readonly="!canEdit" maxlength="50" /></label>
             <button
               class="secondary form-submit"
               type="button"
-              :disabled="specLoading || !form.PROCESS_ID"
+              :disabled="specLoading || !form.MODEL_NAME"
               @click="openSpec"
             >
               {{ specLoading ? '불러오는 중…' : 'SPECIFICATIONS 보기' }}
@@ -503,7 +518,7 @@ onMounted(async () => {
             <button v-if="canEdit" class="form-submit" :disabled="saving">
               {{ saving ? '저장 중…' : '기본 정보 저장' }}
             </button>
-            <div class="manual-cover">
+            <div v-if="header.LABEL !== 'OEM'" class="manual-cover">
               <span>표지 이미지</span>
               <div class="manual-cover-preview">
                 <img v-if="header.COVER_IMAGE_PATH" :src="header.COVER_IMAGE_PATH" alt="표지 이미지" />
@@ -613,7 +628,13 @@ onMounted(async () => {
         ><button class="secondary" type="button" @click="specOpen = false">닫기</button></template
       ></AppDialog
     >
-    <TemplateSectionDialog v-model:open="templateOpen" :mid="mid" :can-edit="canEdit" @changed="reloadSections" />
+    <TemplateSectionDialog
+      v-model:open="templateOpen"
+      :mid="mid"
+      :can-edit="canEdit"
+      @changed="reloadSections"
+      @create="openNewSection"
+    />
     <AppDialog v-model:open="sectionOpen" title="목차 수정">
       <p v-if="sectionError" class="error">{{ sectionError }}</p>
       <div class="section-edit-grid">
